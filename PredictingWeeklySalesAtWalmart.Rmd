@@ -1,0 +1,132 @@
+---
+title: "Predicting Weekly Sales at WalMart Stores"
+author: ""
+date: "August 31, 2015"
+output: 
+  html_document:
+    toc: true
+    theme: cerulean
+---
+
+
+```{r setup, echo=FALSE , include=FALSE}
+# Setting up the R Markdown Report
+# echo & include is set to false because I do not want this on the report
+
+# enabling cache so we don't have to run the code everytime
+knitr::opts_chunk$set(cache=TRUE)  
+# width of the report
+options(width=120)
+```
+
+<BR>
+
+# Executive Summary
+Retail stores need to be able to predict sales forecasts for the future and study the effect how strategic offers affect sales, especially during holiday season. Since the number of days in holidays are limited, it becomes more challenging to be able to accruately predict how different aspects affect sales.
+
+The report will attempt to create a predictive model for WalMart stores department-wise Weekly Sales.
+
+
+# Introduction
+
+
+## About the Solution Environment
+The authors implemented this solution in R. We have used R Markdown Report to create this document. First we explore and prepare the data set before carrying out formal statistical inferences on the dataset. We wrap the report by building a model to predict Weekly sales for the 45 stores in this dataset.
+
+
+## About the Data
+The dataset under consideration is taken from a recruitment competition WalMart ran on Kaggle between February-May 2014. The participants were supposed to create a model to be able to predict Weekly Sales for 45 Stores located in different regions. Each store has multiple departments and the end requirement is to be able to predict the sales for individual departments of each store.
+
+
+### The Challenge
+The challenge is to be able to predict how different holiday price markdowns affect the various departments in the store, to model extent of impact of these markdowns.
+
+<IMAGE src="Images/markdowns.png" />
+
+
+## Getting the Data
+The data was download from Kaggle.
+
+URL to the Kaggle Competition Site: https://www.kaggle.com/c/walmart-recruiting-store-sales-forecasting
+
+The files available are the following:<BR>
+<IMAGE src="Images/DataFilesImage.png" />
+
+### The Data Files
+Here we discuss the various CSV Files that are given by WalMart.
+
+#### stores.csv
+Contains size and type of 45 stores (45 records).
+
+#### train.csv
+Weekly sales dataset from Februray 05, 2010 to November 11, 2012. It contains the following fields:
+
+* Store: store number
+* Dept: the department number
+* Date: week date
+* Weekly_Sales: sales for the given department in the given store
+* IsHoliday: whether the week is a special holiday week
+
+#### test.csv
+The dataset with similar fields as train.csv, except without Weekly_Sales. This will be used to test the model with unseen data and can be evaulated by uploading the dataset to Kaggle.
+
+#### features.csv
+This data file contains additional relevant information relating to the physical and business environment around the store. The fields are as follows:
+
+* Store: store number
+* Date: the week date
+* Temperature: the average temperature in the region
+* Fuel_Price: cost of fuel in the region
+* MarkDown1-5: data related to the markdowns that Walmart is running. Markdown data is only available after November 2011 and is not available for all stores all the time. Any missing value is marked with an NA.
+* CPI - the Consumer Price Index
+* Unemployment - the unemployment rate
+* IsHoliday - whether the week is a special holiday week
+
+The four holidays fall inthe following weeks in the dataset:
+
+* Super Bowl: 12-Feb-10, 11-Feb-11, 10-Feb-12, 8-Feb-13
+* Labor Day: 10-Sep-10, 9-Sep-11, 7-Sep-12, 6-Sep-13
+* Thanksgiving: 26-Nov-10, 25-Nov-11, 23-Nov-12, 29-Nov-13
+* Christmas: 31-Dec-10, 30-Dec-11, 28-Dec-12, 27-Dec-13
+
+### Ingesting the Data
+```{r ingest}
+## Ingesting the data from the Data folder
+train <- read.csv("Data/train.csv")
+stores <- read.csv("Data/stores.csv")
+features <- read.csv("Data/features.csv")
+test <- read.csv("Data/test.csv")
+```
+
+<BR>
+
+# Data Exploration and Preparation
+
+## Inital Exploration
+
+### Summarizing The Training Dataset (train)
+
+```{r trainDatasetStr}
+str(train)
+```
+
+<BR>
+
+We see the structure of the training dataset. Dates are ingested as factors (as opposed to being ingested as dates). This needs to be corrected to date format. we see that there are 143 dates in total.
+
+```{r trainDatasetSummary}
+## Changing the Date from "Format" type to "Date" Type 
+train$Date <- as.Date(train$Date)
+## Getting the summary of the Data
+summary(train)
+```
+
+<BR>
+There is no missing data in the dataset.
+
+As discussed in the Introduction, this report contains data of 45 stores - represented by Store. There are a total of 99 stores in all.
+
+The starting date for training dataset is ```r min(train$Date)```. It starts on a ```r weekdays(min(train$Date) )```. The last date recorded in the dataset is ```r max(train$Date)```, which is also a ```r weekdays( max( train$Date ) )```. There are ```r days<- as.numeric( max( train$Date )  - min(train$Date) ); days``` days between them - so the data consists of a total of ```r days/7 + 1``` weeks of data.
+
+There are ```
+
