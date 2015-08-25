@@ -24,7 +24,7 @@ options(width=80)
 # 1. Executive Summary
 Retail stores need to be able to predict sales forecasts for the future and study the effect how strategic offers affect sales, especially during holiday season. Since the number of days in holidays are limited, it becomes more challenging to be able to accruately predict how different aspects affect sales.
 
-The report will attempt to create a predictive model for WalMart stores department-wise Weekly Sales.
+The report will attempt to create a predictive model for WalMart a store's Weekly Sales and store department-wise Weekly Sales.
 
 
 # 2. Introduction
@@ -111,11 +111,9 @@ library(ggplot2)
 
 # 3. Stage 1: Data Exploration and Preparation
 
-## 3.1 Inital Exploration
+## 3.1 Summary Statististics
 
 ### 3.1.1 The Training Dataset (train)
-
-#### 3.1.1.1 Structure of the Data
 ```{r trainDatasetStr}
 str(train)
 ```
@@ -124,7 +122,6 @@ str(train)
 
 <code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 143 dates in total.
 
-#### 3.1.1.2 Summary Statistics
 ```{r trainDatasetSummary}
 ## Changing the Date from "Format" type to "Date" Type 
 train$Date <- as.Date(train$Date)
@@ -144,13 +141,11 @@ It is interesting to note that for some departments the <code>Weekly_Sales</code
 There are no missing values in this dataset.
 
 ### 3.1.2 The Stores Dataset (stores)
-#### 3.1.2.1 Structure of the Data
 ```{r storesDatasetStr}
 ## Structure of Stores Dataset
 str(stores)
 ```
 
-#### 3.1.2.2 Summary Statistics
 ```{r storesSummary}
 ## summary Statistics of Stores dataset
 summary(stores)
@@ -162,7 +157,6 @@ No missing data.
 
 ### 3.1.3 The Features Dataset (features)
 
-#### 3.1.3.1 Structure of the Data
 ```{r featuresDatasetStr}
 ## Structure of features dataset
 str(features)
@@ -170,7 +164,6 @@ str(features)
 
 <code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 182 dates in total. This dataset is relevant for both the <code>train</code> and the <code>test</code> dataset.
 
-#### 3.1.3.2 Summary Statistics
 ```{r featuresSummary}
 ## Changing the Date from "Format" type to "Date" Type 
 features$Date <- as.Date(features$Date)
@@ -182,7 +175,6 @@ The <code>features</code> dataset has missing variables for <code>Markdown1-5</c
 
 ### 3.1.4 The Test Dataset (test)
 
-#### 3.1.4.1 Structure of the Data
 ```{r testDatasetStr}
 ## Structure of test dataset
 str(test)
@@ -190,7 +182,6 @@ str(test)
 
 <code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 39 dates in total.
 
-#### 3.1.4.2 Summary Statistics
 ```{r testSummary}
 ## Changing the Date from "Format" type to "Date" Type 
 test$Date <- as.Date(test$Date)
@@ -199,6 +190,75 @@ summary(test)
 ```
 
 
+## 3.2 Data Preparation - Merging the Datasets
+### 3.2.1 Merging Train and Stores Datasets
+Since the <code>Type</code> & <code>Size</code> variables may influence the Weekly Sales, we are merging the <code>train</code> & <stores</code> datasets. We merge the data by <code>Store</code>.
+
+```{r mergeTrainStores}
+## Merging train and stores by Store
+trainStoresMerge <- merge(train , stores , by = "Store")
+```
+
+### 3.2.2 Merging Train, Stores and Features Datasets
+Since <code>Markdown1-5</code> and other variables could play an important role at predicting <code>Weekly_Sales</code>, this should be merged with the <code>trainStoresMerge</code> dataset. We merge the data by <code>Store</code> & <code>Date</code>.
+
+```{r mergeTrainStoresFeatures}
+## Merging trainStoresMerge and features datasets
+trainStoresFeaturesMerge <- merge( trainStoresMerge , features , by = c( "Store" , "Date" ) )
+## Clearing memory - removing intermediate datasets
+rm(trainStoresMerge , train)
+## Fixing the name of the Column
+colnames(trainStoresFeaturesMerge)[5] <- "IsHoliday"
+trainStoresFeaturesMerge$IsHoliday.y <- NULL
+```
+
+### 3.2.3 Merging Test, Stores and Features Datasets
+We similarily merge the <code>test</code>, <code>stores</code> & <code>features</code> to create the <code>testStoresFeaturesMerge</code> dataset.
+
+```{r mergeTestStoresFeatures}
+## Merging test and stores by Store
+testStoresMerge <- merge(test , stores , by = "Store")
+## Merging testStoresMerge and features datasets
+testStoresFeaturesMerge <- merge( testStoresMerge , features , by = c( "Store" , "Date" ) )
+## Clearing Memory - removing intermediate Datasets
+rm( test , testStoresMerge , features )
+## Fixing the name of the Column
+colnames(testStoresFeaturesMerge)[5] <- "IsHoliday"
+testStoresFeaturesMerge$IsHoliday.y <- NULL
+```
+
+
+## 3.3 Data Exploration
+
+### 3.3.1 Total Sales Vs. Store Size
+Plotting the total sales of a store vs. Store Size. We first calculate the total sales per Store and plot it as a response (y-axis) to the Store size (x-axis) to understand the relationship between them.
+
+```{r salesStoreSize}
+## Total Sales vs. Store Size - plotting the relationship
+## calculating the sum of all the store sales
+StoreTotalSales <- tapply(trainStoresFeaturesMerge$Weekly_Sales, trainStoresFeaturesMerge$Store, FUN = sum)
+## converting the table to a DataFrame
+stores$TotalSales <- StoreTotalSales
+stores$TotalSalesInMillion <- stores$TotalSales/1000000
+## Plotting the Total Sales vs. Store Size
+ggplot( stores , aes(x=Size , y=TotalSalesInMillion , color = Type ) ) + 
+  geom_point() +  
+  scale_y_continuous(name="Total Sales in Millions" )
+```
+
+This plot indicates that there is a postive relationship between the size of the store and total sales. Also Type 'A' Stores are mostly larger stores with bigger sales and Type 'C' Stores are small with lower sales.
+
+### 3.3.2 Store Sales - Time Series
+
+
+
+
+
+
 # 4. Stage 2: Formal Statistical Inferences
 ## 4.1 Do Holiday Weeks Account for Higher Sales?
 ## 4.2 Are Sales 
+
+# 5. Stage 3: Linear Regression: Predicting Weekly_Sales
+## 5.1 Predicting Store Weekly_Sales
+## 5.2 Predicting Store-Department Weekly_Sales
