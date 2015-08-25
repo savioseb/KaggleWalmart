@@ -67,60 +67,68 @@ img {
 
 <div id="TOC">
 <ul>
-<li><a href="#executive-summary">Executive Summary</a></li>
-<li><a href="#introduction">Introduction</a><ul>
-<li><a href="#about-the-solution-environment">About the Solution Environment</a></li>
-<li><a href="#about-the-data">About the Data</a><ul>
-<li><a href="#the-challenge">The Challenge</a></li>
+<li><a href="#executive-summary">1. Executive Summary</a></li>
+<li><a href="#introduction">2. Introduction</a><ul>
+<li><a href="#about-the-solution-environment">2.1 About the Solution Environment</a></li>
+<li><a href="#about-the-data">2.2 About the Data</a><ul>
+<li><a href="#the-challenge">2.2.1 The Challenge</a></li>
 </ul></li>
-<li><a href="#getting-the-data">Getting the Data</a><ul>
-<li><a href="#the-data-files">The Data Files</a></li>
-<li><a href="#ingesting-the-data">Ingesting the Data</a></li>
+<li><a href="#getting-the-data">2.3 Getting the Data</a><ul>
+<li><a href="#the-data-files">2.3.1 The Data Files</a></li>
+<li><a href="#ingesting-the-data">2.3.2 Ingesting the Data</a></li>
+</ul></li>
+<li><a href="#libraries-used">2.4 Libraries Used</a></li>
+</ul></li>
+<li><a href="#stage-1-data-exploration-and-preparation">3. Stage 1: Data Exploration and Preparation</a><ul>
+<li><a href="#inital-exploration">3.1 Inital Exploration</a><ul>
+<li><a href="#the-training-dataset-train">3.1.1 The Training Dataset (train)</a></li>
+<li><a href="#the-stores-dataset-stores">3.1.2 The Stores Dataset (stores)</a></li>
+<li><a href="#the-features-dataset-features">3.1.3 The Features Dataset (features)</a></li>
+<li><a href="#the-test-dataset-test">3.1.4 The Test Dataset (test)</a></li>
 </ul></li>
 </ul></li>
-<li><a href="#data-exploration-and-preparation">Data Exploration and Preparation</a><ul>
-<li><a href="#inital-exploration">Inital Exploration</a><ul>
-<li><a href="#summarizing-the-training-dataset-train">Summarizing The Training Dataset (train)</a></li>
-</ul></li>
+<li><a href="#stage-2-formal-statistical-inferences">4. Stage 2: Formal Statistical Inferences</a><ul>
+<li><a href="#do-holiday-weeks-account-for-higher-sales">4.1 Do Holiday Weeks Account for Higher Sales?</a></li>
+<li><a href="#are-sales">4.2 Are Sales</a></li>
 </ul></li>
 </ul>
 </div>
 
 <p><BR></p>
 <div id="executive-summary" class="section level1">
-<h1>Executive Summary</h1>
+<h1>1. Executive Summary</h1>
 <p>Retail stores need to be able to predict sales forecasts for the future and study the effect how strategic offers affect sales, especially during holiday season. Since the number of days in holidays are limited, it becomes more challenging to be able to accruately predict how different aspects affect sales.</p>
 <p>The report will attempt to create a predictive model for WalMart stores department-wise Weekly Sales.</p>
 </div>
 <div id="introduction" class="section level1">
-<h1>Introduction</h1>
+<h1>2. Introduction</h1>
 <div id="about-the-solution-environment" class="section level2">
-<h2>About the Solution Environment</h2>
+<h2>2.1 About the Solution Environment</h2>
 <p>The authors implemented this solution in R. We have used R Markdown Report to create this document. First we explore and prepare the data set before carrying out formal statistical inferences on the dataset. We wrap the report by building a model to predict Weekly sales for the 45 stores in this dataset.</p>
 </div>
 <div id="about-the-data" class="section level2">
-<h2>About the Data</h2>
+<h2>2.2 About the Data</h2>
 <p>The dataset under consideration is taken from a recruitment competition WalMart ran on Kaggle between February-May 2014. The participants were supposed to create a model to be able to predict Weekly Sales for 45 Stores located in different regions. Each store has multiple departments and the end requirement is to be able to predict the sales for individual departments of each store.</p>
 <div id="the-challenge" class="section level3">
-<h3>The Challenge</h3>
+<h3>2.2.1 The Challenge</h3>
 <p>The challenge is to be able to predict how different holiday price markdowns affect the various departments in the store, to model extent of impact of these markdowns.</p>
 <p><IMAGE src="Images/markdowns.png"></IMAGE></p>
 </div>
 </div>
 <div id="getting-the-data" class="section level2">
-<h2>Getting the Data</h2>
+<h2>2.3 Getting the Data</h2>
 <p>The data was download from Kaggle.</p>
 <p>URL to the Kaggle Competition Site: <a href="https://www.kaggle.com/c/walmart-recruiting-store-sales-forecasting" class="uri">https://www.kaggle.com/c/walmart-recruiting-store-sales-forecasting</a></p>
 <p>The files available are the following:<BR> <IMAGE src="Images/DataFilesImage.png"></IMAGE></p>
 <div id="the-data-files" class="section level3">
-<h3>The Data Files</h3>
+<h3>2.3.1 The Data Files</h3>
 <p>Here we discuss the various CSV Files that are given by WalMart.</p>
 <div id="stores.csv" class="section level4">
-<h4>stores.csv</h4>
+<h4>2.3.1.1 stores.csv</h4>
 <p>Contains size and type of 45 stores (45 records).</p>
 </div>
 <div id="train.csv" class="section level4">
-<h4>train.csv</h4>
+<h4>2.3.1.2 train.csv</h4>
 <p>Weekly sales dataset from Februray 05, 2010 to November 11, 2012. It contains the following fields:</p>
 <ul>
 <li>Store: store number</li>
@@ -131,11 +139,11 @@ img {
 </ul>
 </div>
 <div id="test.csv" class="section level4">
-<h4>test.csv</h4>
+<h4>2.3.1.3 test.csv</h4>
 <p>The dataset with similar fields as train.csv, except without Weekly_Sales. This will be used to test the model with unseen data and can be evaulated by uploading the dataset to Kaggle.</p>
 </div>
 <div id="features.csv" class="section level4">
-<h4>features.csv</h4>
+<h4>2.3.1.4 features.csv</h4>
 <p>This data file contains additional relevant information relating to the physical and business environment around the store. The fields are as follows:</p>
 <ul>
 <li>Store: store number</li>
@@ -157,22 +165,30 @@ img {
 </div>
 </div>
 <div id="ingesting-the-data" class="section level3">
-<h3>Ingesting the Data</h3>
+<h3>2.3.2 Ingesting the Data</h3>
 <pre class="r"><code>## Ingesting the data from the Data folder
 train &lt;- read.csv(&quot;Data/train.csv&quot;)
 stores &lt;- read.csv(&quot;Data/stores.csv&quot;)
 features &lt;- read.csv(&quot;Data/features.csv&quot;)
 test &lt;- read.csv(&quot;Data/test.csv&quot;)</code></pre>
+</div>
+</div>
+<div id="libraries-used" class="section level2">
+<h2>2.4 Libraries Used</h2>
+<p>The following libraries are used in this report:</p>
+<pre class="r"><code># Grammar of Graphics Plotting Library
+library(ggplot2)</code></pre>
 <p><BR></p>
 </div>
 </div>
-</div>
-<div id="data-exploration-and-preparation" class="section level1">
-<h1>Data Exploration and Preparation</h1>
+<div id="stage-1-data-exploration-and-preparation" class="section level1">
+<h1>3. Stage 1: Data Exploration and Preparation</h1>
 <div id="inital-exploration" class="section level2">
-<h2>Inital Exploration</h2>
-<div id="summarizing-the-training-dataset-train" class="section level3">
-<h3>Summarizing The Training Dataset (train)</h3>
+<h2>3.1 Inital Exploration</h2>
+<div id="the-training-dataset-train" class="section level3">
+<h3>3.1.1 The Training Dataset (train)</h3>
+<div id="structure-of-the-data" class="section level4">
+<h4>3.1.1.1 Structure of the Data</h4>
 <pre class="r"><code>str(train)</code></pre>
 <pre><code>## 'data.frame':    421570 obs. of  5 variables:
 ##  $ Store       : int  1 1 1 1 1 1 1 1 1 1 ...
@@ -181,23 +197,151 @@ test &lt;- read.csv(&quot;Data/test.csv&quot;)</code></pre>
 ##  $ Weekly_Sales: num  24924 46039 41596 19404 21828 ...
 ##  $ IsHoliday   : logi  FALSE TRUE FALSE FALSE FALSE FALSE ...</code></pre>
 <p><BR></p>
-<p>We see the structure of the training dataset. Dates are ingested as factors (as opposed to being ingested as dates). This needs to be corrected to date format. we see that there are 143 dates in total.</p>
+<p><code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 143 dates in total.</p>
+</div>
+<div id="summary-statistics" class="section level4">
+<h4>3.1.1.2 Summary Statistics</h4>
 <pre class="r"><code>## Changing the Date from &quot;Format&quot; type to &quot;Date&quot; Type 
 train$Date &lt;- as.Date(train$Date)
 ## Getting the summary of the Data
 summary(train)</code></pre>
-<pre><code>##      Store           Dept            Date             Weekly_Sales    IsHoliday      
-##  Min.   : 1.0   Min.   : 1.00   Min.   :2010-02-05   Min.   : -4989   Mode :logical  
-##  1st Qu.:11.0   1st Qu.:18.00   1st Qu.:2010-10-08   1st Qu.:  2080   FALSE:391909   
-##  Median :22.0   Median :37.00   Median :2011-06-17   Median :  7612   TRUE :29661    
-##  Mean   :22.2   Mean   :44.26   Mean   :2011-06-18   Mean   : 15981   NA's :0        
-##  3rd Qu.:33.0   3rd Qu.:74.00   3rd Qu.:2012-02-24   3rd Qu.: 20206                  
-##  Max.   :45.0   Max.   :99.00   Max.   :2012-10-26   Max.   :693099</code></pre>
+<pre><code>##      Store           Dept            Date             Weekly_Sales   
+##  Min.   : 1.0   Min.   : 1.00   Min.   :2010-02-05   Min.   : -4989  
+##  1st Qu.:11.0   1st Qu.:18.00   1st Qu.:2010-10-08   1st Qu.:  2080  
+##  Median :22.0   Median :37.00   Median :2011-06-17   Median :  7612  
+##  Mean   :22.2   Mean   :44.26   Mean   :2011-06-18   Mean   : 15981  
+##  3rd Qu.:33.0   3rd Qu.:74.00   3rd Qu.:2012-02-24   3rd Qu.: 20206  
+##  Max.   :45.0   Max.   :99.00   Max.   :2012-10-26   Max.   :693099  
+##  IsHoliday      
+##  Mode :logical  
+##  FALSE:391909   
+##  TRUE :29661    
+##  NA's :0        
+##                 
+## </code></pre>
 <p><BR> There is no missing data in the dataset.</p>
 <p>As discussed in the Introduction, this report contains data of 45 stores - represented by Store. There are a total of 99 stores in all.</p>
 <p>The starting date for training dataset is <code>2010-02-05</code>. It starts on a <code>Friday</code>. The last date recorded in the dataset is <code>2012-10-26</code>, which is also a <code>Friday</code>. There are <code>994</code> days between them - so the data consists of a total of <code>143</code> weeks of data.</p>
-<p>There are ```</p>
+<p>It is interesting to note that for some departments the <code>Weekly_Sales</code> are negative. Returns and special offers cause these negative sales figures.</p>
+<p>There are no missing values in this dataset.</p>
 </div>
+</div>
+<div id="the-stores-dataset-stores" class="section level3">
+<h3>3.1.2 The Stores Dataset (stores)</h3>
+<div id="structure-of-the-data-1" class="section level4">
+<h4>3.1.2.1 Structure of the Data</h4>
+<pre class="r"><code>## Structure of Stores Dataset
+str(stores)</code></pre>
+<pre><code>## 'data.frame':    45 obs. of  3 variables:
+##  $ Store: int  1 2 3 4 5 6 7 8 9 10 ...
+##  $ Type : Factor w/ 3 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;: 1 1 2 1 2 1 2 1 2 2 ...
+##  $ Size : int  151315 202307 37392 205863 34875 202505 70713 155078 125833 126512 ...</code></pre>
+</div>
+<div id="summary-statistics-1" class="section level4">
+<h4>3.1.2.2 Summary Statistics</h4>
+<pre class="r"><code>## summary Statistics of Stores dataset
+summary(stores)</code></pre>
+<pre><code>##      Store    Type        Size       
+##  Min.   : 1   A:22   Min.   : 34875  
+##  1st Qu.:12   B:17   1st Qu.: 70713  
+##  Median :23   C: 6   Median :126512  
+##  Mean   :23          Mean   :130288  
+##  3rd Qu.:34          3rd Qu.:202307  
+##  Max.   :45          Max.   :219622</code></pre>
+<p>No missing data.</p>
+</div>
+</div>
+<div id="the-features-dataset-features" class="section level3">
+<h3>3.1.3 The Features Dataset (features)</h3>
+<div id="structure-of-the-data-2" class="section level4">
+<h4>3.1.3.1 Structure of the Data</h4>
+<pre class="r"><code>## Structure of features dataset
+str(features)</code></pre>
+<pre><code>## 'data.frame':    8190 obs. of  12 variables:
+##  $ Store       : int  1 1 1 1 1 1 1 1 1 1 ...
+##  $ Date        : Factor w/ 182 levels &quot;2010-02-05&quot;,&quot;2010-02-12&quot;,..: 1 2 3 4 5 6 7 8 9 10 ...
+##  $ Temperature : num  42.3 38.5 39.9 46.6 46.5 ...
+##  $ Fuel_Price  : num  2.57 2.55 2.51 2.56 2.62 ...
+##  $ MarkDown1   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ MarkDown2   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ MarkDown3   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ MarkDown4   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ MarkDown5   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ CPI         : num  211 211 211 211 211 ...
+##  $ Unemployment: num  8.11 8.11 8.11 8.11 8.11 ...
+##  $ IsHoliday   : logi  FALSE TRUE FALSE FALSE FALSE FALSE ...</code></pre>
+<p><code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 182 dates in total. This dataset is relevant for both the <code>train</code> and the <code>test</code> dataset.</p>
+</div>
+<div id="summary-statistics-2" class="section level4">
+<h4>3.1.3.2 Summary Statistics</h4>
+<pre class="r"><code>## Changing the Date from &quot;Format&quot; type to &quot;Date&quot; Type 
+features$Date &lt;- as.Date(features$Date)
+## Summary Statistics of Features Dataset
+summary(features)</code></pre>
+<pre><code>##      Store         Date             Temperature       Fuel_Price   
+##  Min.   : 1   Min.   :2010-02-05   Min.   : -7.29   Min.   :2.472  
+##  1st Qu.:12   1st Qu.:2010-12-17   1st Qu.: 45.90   1st Qu.:3.041  
+##  Median :23   Median :2011-10-31   Median : 60.71   Median :3.513  
+##  Mean   :23   Mean   :2011-10-31   Mean   : 59.36   Mean   :3.406  
+##  3rd Qu.:34   3rd Qu.:2012-09-14   3rd Qu.: 73.88   3rd Qu.:3.743  
+##  Max.   :45   Max.   :2013-07-26   Max.   :101.95   Max.   :4.468  
+##                                                                    
+##    MarkDown1        MarkDown2           MarkDown3           MarkDown4       
+##  Min.   : -2781   Min.   :  -265.76   Min.   :  -179.26   Min.   :    0.22  
+##  1st Qu.:  1578   1st Qu.:    68.88   1st Qu.:     6.60   1st Qu.:  304.69  
+##  Median :  4744   Median :   364.57   Median :    36.26   Median : 1176.42  
+##  Mean   :  7032   Mean   :  3384.18   Mean   :  1760.10   Mean   : 3292.94  
+##  3rd Qu.:  8923   3rd Qu.:  2153.35   3rd Qu.:   163.15   3rd Qu.: 3310.01  
+##  Max.   :103185   Max.   :104519.54   Max.   :149483.31   Max.   :67474.85  
+##  NA's   :4158     NA's   :5269        NA's   :4577        NA's   :4726      
+##    MarkDown5             CPI         Unemployment    IsHoliday      
+##  Min.   :  -185.2   Min.   :126.1   Min.   : 3.684   Mode :logical  
+##  1st Qu.:  1440.8   1st Qu.:132.4   1st Qu.: 6.634   FALSE:7605     
+##  Median :  2727.1   Median :182.8   Median : 7.806   TRUE :585      
+##  Mean   :  4132.2   Mean   :172.5   Mean   : 7.827   NA's :0        
+##  3rd Qu.:  4832.6   3rd Qu.:213.9   3rd Qu.: 8.567                  
+##  Max.   :771448.1   Max.   :229.0   Max.   :14.313                  
+##  NA's   :4140       NA's   :585     NA's   :585</code></pre>
+<p>The <code>features</code> dataset has missing variables for <code>Markdown1-5</code>, <code>CPI</code> &amp; <code>Unemployment</code>.</p>
+</div>
+</div>
+<div id="the-test-dataset-test" class="section level3">
+<h3>3.1.4 The Test Dataset (test)</h3>
+<div id="structure-of-the-data-3" class="section level4">
+<h4>3.1.4.1 Structure of the Data</h4>
+<pre class="r"><code>## Structure of test dataset
+str(test)</code></pre>
+<pre><code>## 'data.frame':    115064 obs. of  4 variables:
+##  $ Store    : int  1 1 1 1 1 1 1 1 1 1 ...
+##  $ Dept     : int  1 1 1 1 1 1 1 1 1 1 ...
+##  $ Date     : Factor w/ 39 levels &quot;2012-11-02&quot;,&quot;2012-11-09&quot;,..: 1 2 3 4 5 6 7 8 9 10 ...
+##  $ IsHoliday: logi  FALSE FALSE FALSE TRUE FALSE FALSE ...</code></pre>
+<p><code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 39 dates in total.</p>
+</div>
+<div id="summary-statistics-3" class="section level4">
+<h4>3.1.4.2 Summary Statistics</h4>
+<pre class="r"><code>## Changing the Date from &quot;Format&quot; type to &quot;Date&quot; Type 
+test$Date &lt;- as.Date(test$Date)
+## Summary Statistics of test Dataset
+summary(test)</code></pre>
+<pre><code>##      Store            Dept            Date            IsHoliday      
+##  Min.   : 1.00   Min.   : 1.00   Min.   :2012-11-02   Mode :logical  
+##  1st Qu.:11.00   1st Qu.:18.00   1st Qu.:2013-01-04   FALSE:106136   
+##  Median :22.00   Median :37.00   Median :2013-03-15   TRUE :8928     
+##  Mean   :22.24   Mean   :44.34   Mean   :2013-03-14   NA's :0        
+##  3rd Qu.:33.00   3rd Qu.:74.00   3rd Qu.:2013-05-24                  
+##  Max.   :45.00   Max.   :99.00   Max.   :2013-07-26</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="stage-2-formal-statistical-inferences" class="section level1">
+<h1>4. Stage 2: Formal Statistical Inferences</h1>
+<div id="do-holiday-weeks-account-for-higher-sales" class="section level2">
+<h2>4.1 Do Holiday Weeks Account for Higher Sales?</h2>
+</div>
+<div id="are-sales" class="section level2">
+<h2>4.2 Are Sales</h2>
 </div>
 </div>
 

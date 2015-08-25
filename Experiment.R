@@ -6,10 +6,17 @@ test <- read.csv("Data/test.csv")
 
 ## Fixing the Data
 train$Date <- as.Date(train$Date)
-trainStoresMerge <- merge(train , stores , by = "Store")
 features$Date <- as.Date(features$Date)
 test$Date <- as.Date( test$Date)
+
+trainStoresMerge <- merge(train , stores , by = "Store")
 merge( trainStoresMerge , features , by = c( "Store" , "Date" ) )
+
+
+#unique store department
+storeDept <- train[,c(1,2)]
+uniqueStoreDept <- unique(storeDept)
+hist(uniqueStoreDept$Store,breaks = 45)
 
 
 # Model Building
