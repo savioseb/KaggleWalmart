@@ -9,14 +9,13 @@ output:
 ---
 
 
-```{r setup, echo=FALSE , include=FALSE}
+```{r setup, echo=FALSE , include=FALSE , fig.width=10, fig.height=10}
 # Setting up the R Markdown Report
 # echo & include is set to false because I do not want this on the report
-
 # enabling cache so we don't have to run the code everytime
-knitr::opts_chunk$set(cache=TRUE)  
-# width of the report
-options(width=80)
+knitr::opts_chunk$set(cache=TRUE, out.width='750px' , dpi=200 )  
+# width of the report & to prevent Scientific notations for large numbers
+options(width=80 , scipen=10000)
 ```
 
 <BR>
@@ -24,18 +23,20 @@ options(width=80)
 # 1. Executive Summary
 Retail stores need to be able to predict sales forecasts for the future and study the effect how strategic offers affect sales, especially during holiday season. Since the number of days in holidays are limited, it becomes more challenging to be able to accruately predict how different aspects affect sales.
 
-The report will attempt to create a predictive model for WalMart a store's Weekly Sales and store department-wise Weekly Sales.
+The report will attempt to create a predictive model for Weekly Sales in each department of the 45 stores.
 
 
 # 2. Introduction
 
 
 ## 2.1 About the Solution Environment
-The authors implemented this solution in R. We have used R Markdown Report to create this document. First we explore and prepare the data set before carrying out formal statistical inferences on the dataset. We wrap the report by building a model to predict Weekly sales for the 45 stores in this dataset.
+The authors implemented this solution in R. We have used R Markdown Report to create this document. First we explore and prepare the data set before carrying out formal statistical inferences on the dataset. We wrap the report by building a model to predict Weekly sales of the departments belonging to the 45 stores in this dataset.
 
 
 ## 2.2 About the Data
-The dataset under consideration is taken from a recruitment competition WalMart ran on Kaggle between February-May 2014. The participants were supposed to create a model to be able to predict Weekly Sales for 45 Stores located in different regions. Each store has multiple departments and the end requirement is to be able to predict the sales for individual departments of each store.
+The dataset under consideration is taken from a recruitment competition WalMart ran on Kaggle between February-May 2014. Each store has multiple departments and the end requirement is to be able to predict the sales for individual departments of each store.
+
+The training dataset has more than 400K records. The testing dataset has over 100K recrods.
 
 
 ### 2.2.1 The Challenge
@@ -98,12 +99,18 @@ features <- read.csv("Data/features.csv")
 test <- read.csv("Data/test.csv")
 ```
 
-## 2.4 Libraries Used
+## 2.4 R Libraries Used
 The following libraries are used in this report:
 
 ```{r librariesUsed}
 # Grammar of Graphics Plotting Library
 library(ggplot2)
+# To use 'melt'
+library(reshape2)
+# to enable commas in graphs
+library(scales)
+# to get the month number from date variable
+library(lubridate)
 ```
 
 
@@ -204,7 +211,8 @@ Since <code>Markdown1-5</code> and other variables could play an important role 
 
 ```{r mergeTrainStoresFeatures}
 ## Merging trainStoresMerge and features datasets
-trainStoresFeaturesMerge <- merge( trainStoresMerge , features , by = c( "Store" , "Date" ) )
+trainStoresFeaturesMerge <- 
+  merge( trainStoresMerge , features , by = c( "Store" , "Date" ) )
 ## Clearing memory - removing intermediate datasets
 rm(trainStoresMerge , train)
 ## Fixing the name of the Column
@@ -219,7 +227,8 @@ We similarily merge the <code>test</code>, <code>stores</code> & <code>features<
 ## Merging test and stores by Store
 testStoresMerge <- merge(test , stores , by = "Store")
 ## Merging testStoresMerge and features datasets
-testStoresFeaturesMerge <- merge( testStoresMerge , features , by = c( "Store" , "Date" ) )
+testStoresFeaturesMerge <- 
+  merge( testStoresMerge , features , by = c( "Store" , "Date" ) )
 ## Clearing Memory - removing intermediate Datasets
 rm( test , testStoresMerge , features )
 ## Fixing the name of the Column
@@ -230,35 +239,382 @@ testStoresFeaturesMerge$IsHoliday.y <- NULL
 
 ## 3.3 Data Exploration
 
-### 3.3.1 Total Sales Vs. Store Size
+### 3.3.1 Total Sales Per Department in each Store
+The final goal of this report is to be able to predict the weekly sales for each department in a store. First we would like to understand which departments are present in the 45 different stores and their total sales.
+
+```{r salesDeptStore}
+## running the sum function for each store & department
+storeDeptTotalSales <- tapply( 
+  trainStoresFeaturesMerge$Weekly_Sales , 
+  trainStoresFeaturesMerge[, c("Store","Dept")]  , 
+  FUN = sum )
+## Converting the matrix to a dataframe
+storeDeptTotalSalesDataFrame <- as.data.frame( storeDeptTotalSales )
+## Setting the Store Number into the table so we can analyze it further
+storeDeptTotalSalesDataFrame$Store <- 
+  as.integer( rownames( storeDeptTotalSalesDataFrame ) )
+## Move Store to the 1st column in the dataframe
+storeDeptTotalSalesDataFrame <- 
+  storeDeptTotalSalesDataFrame[ , c( ncol(storeDeptTotalSalesDataFrame) , 1:ncol(storeDeptTotalSalesDataFrame)-1 )]
+## Melting the columns into rows to enable analysis
+storeDeptTotalSalesDataFrame <- 
+  melt(storeDeptTotalSalesDataFrame , id="Store" )
+## removing the NA variables - where the department does not exist in a store
+storeDeptTotalSalesDataFrame <- storeDeptTotalSalesDataFrame[ complete.cases(storeDeptTotalSalesDataFrame),]
+## Renaming the Columns in the Dataframe
+colnames( storeDeptTotalSalesDataFrame )[2:3] <- c("Dept" , "TotalSales" )
+## Changing the Dept Type from String to Numeric
+storeDeptTotalSalesDataFrame$Dept <- 
+  as.integer(storeDeptTotalSalesDataFrame$Dept)
+## Freeing Memory - Removing the intermediate Matrix
+rm(storeDeptTotalSales)
+## printing out summary statistics
+summary( storeDeptTotalSalesDataFrame)
+```
+
+#### 3.3.1.1 Heatmap - Store & Department Total Sales
+```{r heatmapStoreDept}
+## Generating a Heatmap of the Department's Total Sales in each of 45 stores
+ggplot( storeDeptTotalSalesDataFrame , aes(x = Store, y = Dept)) + 
+  geom_tile(aes(fill = TotalSales)) +
+  scale_fill_gradient(
+    low="yellow", high="red" , labels = comma , name="Total Sales") +
+  scale_y_continuous(name="Department")
+```
+<BR>
+From the heatmap we can draw the following broad conclusions:
+
+* The departments between 70-80 account for more sales than other departments
+* Some departments are missing in some stores
+
+
+Since there are many datapoints (45 stores, each having )
+
+### 3.3.2 Store Total Sales Vs. Size
 Plotting the total sales of a store vs. Store Size. We first calculate the total sales per Store and plot it as a response (y-axis) to the Store size (x-axis) to understand the relationship between them.
 
 ```{r salesStoreSize}
 ## Total Sales vs. Store Size - plotting the relationship
 ## calculating the sum of all the store sales
-StoreTotalSales <- tapply(trainStoresFeaturesMerge$Weekly_Sales, trainStoresFeaturesMerge$Store, FUN = sum)
+StoreTotalSales <- 
+  tapply(
+    trainStoresFeaturesMerge$Weekly_Sales, 
+    trainStoresFeaturesMerge$Store, 
+    FUN = sum)
 ## converting the table to a DataFrame
 stores$TotalSales <- StoreTotalSales
 stores$TotalSalesInMillion <- stores$TotalSales/1000000
 ## Plotting the Total Sales vs. Store Size
 ggplot( stores , aes(x=Size , y=TotalSalesInMillion , color = Type ) ) + 
   geom_point() +  
-  scale_y_continuous(name="Total Sales in Millions" )
+  scale_y_continuous(name="Total Sales in Millions" ) + 
+  scale_color_discrete( name="Store Type")
 ```
 
 This plot indicates that there is a postive relationship between the size of the store and total sales. Also Type 'A' Stores are mostly larger stores with bigger sales and Type 'C' Stores are small with lower sales.
 
-### 3.3.2 Store Sales - Time Series
+From this we can conclude that the <code>Type</code> of store is an important predictor of <code>Weekly_Sales</code>.
+
+### 3.3.3 Total Sales Per Week - Time Series
+We discuss here the effect holidays have on Total Sales of 45 Stores.
+
+```{r totalSalesTimeSeries}
+## Running tapply with sum to find the total sales per week
+totalSalesPerWeek <- 
+  tapply( 
+    trainStoresFeaturesMerge$Weekly_Sales , 
+    trainStoresFeaturesMerge$Date , 
+    FUN = sum )
+## Converting table to Data Frame
+totalSalesPerWeekDataFrame <- as.data.frame( totalSalesPerWeek )
+## Converting date from String-Factor to Date Type
+totalSalesPerWeekDataFrame$Date <- 
+  as.Date( rownames(totalSalesPerWeekDataFrame ) )
+## Renaming the Column to "TotalSales"
+colnames(totalSalesPerWeekDataFrame)[1] <- "TotalSales"
+## Calculating the Total sales in Millions
+totalSalesPerWeekDataFrame$TotalSalesInMillion = 
+  totalSalesPerWeekDataFrame$TotalSales/1000000
+```
 
 
+```{r lagfunction}
+# function to handle lag
+lagpad <- function(x, k) {
+  if( k > 0 ) {
+    # It should actually be NA in the rep function
+    c(rep(0, k), x)[1 : length(x)] 
+  } else {
+    # It should actually be NA in the rep function
+    c(x[ (abs(k)+1) : length(x)] , rep(0, abs(k) ) )  
+  }
+}
+```
+
+```{r holidayList}
+## Getting the holiday List
+## Extracting the Holiday List
+holidayDateTable <- 
+  table(trainStoresFeaturesMerge$Date , trainStoresFeaturesMerge$IsHoliday)
+## Converting from Table to Data Frame
+holidayDateTableDataFrame <- as.data.frame( holidayDateTable)
+## Extracting the Holidays
+holidayDateTableDataFrame <- 
+  subset( holidayDateTableDataFrame,holidayDateTableDataFrame$Var2==T)
+## Marking the Holdiays in the dataset
+holidayDateTableDataFrame$IsHoliday <- 
+  ifelse( holidayDateTableDataFrame$Freq >0 , 1 , 0 )
+## Converting Date from String-Factor to Date Type
+holidayDateTableDataFrame$Date <- as.Date( holidayDateTableDataFrame$Var1 )
+# creating the holiday season - before and after the holiday week - 2 weeks
+holidayDateTableDataFrame$Week1BeforeHoliday <- 
+  lagpad(holidayDateTableDataFrame$IsHoliday , -1)
+holidayDateTableDataFrame$Week2BeforeHoliday <- 
+  lagpad(holidayDateTableDataFrame$IsHoliday , -2)
+holidayDateTableDataFrame$Week1AfterHoliday <- 
+  lagpad(holidayDateTableDataFrame$IsHoliday , 1)
+holidayDateTableDataFrame$Week2AfterHoliday <- 
+  lagpad(holidayDateTableDataFrame$IsHoliday , 2)
+## Creating an ordered Holiday Season Type
+holidayDateTableDataFrame$HolidaySeasonType = 
+  ifelse( holidayDateTableDataFrame$Week1BeforeHoliday == 1 , 
+          "1 Week Before" ,
+          ifelse( 
+            holidayDateTableDataFrame$Week2BeforeHoliday == 1 , 
+            "2 Weeks Before" ,
+                  ifelse( 
+                    holidayDateTableDataFrame$Week1AfterHoliday == 1 , 
+                    "1 Week After" ,
+                          ifelse( 
+                            holidayDateTableDataFrame$Week2AfterHoliday == 1 ,
+                            "2 Weeks After" ,
+                                  ifelse( 
+                                    holidayDateTableDataFrame$IsHoliday == 1 , 
+                                          "Holiday Week" , "No Holiday" )))))
+holidayDateTableDataFrame$HolidaySeasonType = factor(
+  holidayDateTableDataFrame$HolidaySeasonType , 
+  ordered=TRUE , 
+  levels=c( 
+    "No Holiday" ,
+    "2 Weeks Before" ,
+    "1 Week Before" ,
+    "Holiday Week" ,
+    "1 Week After" ,
+    "2 Weeks After"
+    )
+  )
+
+## Creating a variable to mark if it is a Holiday season - 
+## that is 2 weeks before + holdiay week + 2 weeks after
+holidayDateTableDataFrame$IsHolidaySeason <- 
+  holidayDateTableDataFrame$IsHoliday +
+  holidayDateTableDataFrame$Week1BeforeHoliday * .6 +
+  holidayDateTableDataFrame$Week2BeforeHoliday *.2   +
+  holidayDateTableDataFrame$Week1AfterHoliday * .6 +
+  holidayDateTableDataFrame$Week2AfterHoliday *.2
+
+
+
+## Removing unneccesary Columns
+holidayDateTableDataFrame$Var1 = 
+  holidayDateTableDataFrame$Var2 = 
+  holidayDateTableDataFrame$Freq = NULL
+## Clearing Memory - removing intermediate Tables
+rm(holidayDateTable , totalSalesPerWeek)
+```
+
+
+```{r merging salesperWeekHolidayList}
+## Mering the sales per week and holiday list 
+totalSalesPerWeekDataFrame <- 
+  merge( totalSalesPerWeekDataFrame, holidayDateTableDataFrame , by=2)
+```
+
+```{r plottingSalesPerWeek}
+# Plotting Sales Per Week
+ggplot( totalSalesPerWeekDataFrame , 
+        aes(x=Date , y=TotalSalesInMillion , color = HolidaySeasonType ) ) + 
+  geom_line( aes(group=1) ) + 
+  geom_point(size = 2) +
+  scale_y_continuous(name="Total Sales in Millions" ) +
+  scale_color_brewer(palette="Dark2" , name = "Season Type")
+```
+
+We can clearly see some trends here:
+
+* Sales go up a week before the holiday week
+* It is a repeating pattern - towards the end of the year, there is more sales - perhaps because of Thanksgiving and Christmas.
+* Average Total Sales per week is between 45-50 million Dollars (for 45 stores in the dataset)
+* Perhaps the Data given incorrectly marks the Holiday Week for Christmas - it is marked as the dates 27, 28, 30 & 31 across different years. But looking at the peak, the highest sales for Christmas is the week before - which is perhaps the more accurate holiday week
+* To be able to make better predictors, perhaps it would help to actually create separate factors for each of the holidays
+* It will be interesting to study the period between Aug 27, 2010 to Feb 25, 2011. This section has all the holidays - starting with Labor Day, Thanksgiving, Christmas & Super Bowl. Since the dataset will be smaller, we will perhaps understand the data better.
+
+```{r creatingDummyVariablesForHolidays}
+#####################################
+# Creating separate holiday dummy variables
+holidayDateTableDataFrame$IsHolidayDefined <- 
+  ifelse( 
+    holidayDateTableDataFrame$IsHoliday == 1 & 
+      month( holidayDateTableDataFrame$Date ) == 2 ,
+          2, ifelse( 
+            holidayDateTableDataFrame$IsHoliday == 1 & 
+              month( holidayDateTableDataFrame$Date ) == 9 ,
+                     9 , ifelse( 
+                       holidayDateTableDataFrame$IsHoliday == 1 & 
+                         month( holidayDateTableDataFrame$Date ) == 11 ,
+                                 11 , ifelse( 
+                                   holidayDateTableDataFrame$IsHoliday == 1 & 
+                                     month( 
+                                       holidayDateTableDataFrame$Date ) == 12 ,
+                                              12 , 0 ) ) ) )
+# creating the holiday season lag - before and after the holiday week - 2 weeks
+holidayDateTableDataFrame$Week1BeforeHoliday <- 
+  lagpad(holidayDateTableDataFrame$IsHolidayDefined , -1)
+holidayDateTableDataFrame$Week2BeforeHoliday <- 
+  lagpad(holidayDateTableDataFrame$IsHolidayDefined , -2)
+holidayDateTableDataFrame$Week1AfterHoliday <- 
+  lagpad(holidayDateTableDataFrame$IsHolidayDefined , 1)
+holidayDateTableDataFrame$Week2AfterHoliday <- 
+  lagpad(holidayDateTableDataFrame$IsHolidayDefined , 2)
+
+
+## Creating an ordered Holiday Season Type for Super Bowl
+holidayDateTableDataFrame$HolidaySeasonType <- 
+  ifelse( 
+    holidayDateTableDataFrame$Week1BeforeHoliday == 2 , 
+    "1 Week Before Super Bowl" ,
+          ifelse( 
+            holidayDateTableDataFrame$Week2BeforeHoliday == 2 , 
+            "2 Weeks Before Super Bowl" ,
+                  ifelse( 
+                    holidayDateTableDataFrame$Week1AfterHoliday == 2 , 
+                    "1 Week After Super Bowl" ,
+                          ifelse( 
+                            holidayDateTableDataFrame$Week2AfterHoliday == 2 ,
+                            "2 Weeks After Super Bowl" ,
+                                  ifelse( 
+                                    holidayDateTableDataFrame$IsHolidayDefined 
+                                    == 2 ,
+                                    "Super Bowl" , "No Holiday" )))))
+
+## Creating an ordered Holiday Season Type for Labor Day
+holidayDateTableDataFrame$HolidaySeasonType <- 
+  ifelse( 
+    holidayDateTableDataFrame$Week1BeforeHoliday == 9 , 
+    "1 Week Before Labor Day" ,
+          ifelse( 
+            holidayDateTableDataFrame$Week2BeforeHoliday == 9 , 
+            "2 Weeks Before Labor Day" ,
+                  ifelse( 
+                    holidayDateTableDataFrame$Week1AfterHoliday == 9 , 
+                    "1 Week After Labor Day" ,
+                          ifelse( 
+                            holidayDateTableDataFrame$Week2AfterHoliday == 9 ,
+                            "2 Weeks After Labor Day" ,
+                                  ifelse( 
+                                    holidayDateTableDataFrame$IsHolidayDefined 
+                                    == 9 , "Labor Day" ,
+                                    holidayDateTableDataFrame$HolidaySeasonType 
+                                    ) ) ) ) )
+
+## Creating an ordered Holiday Season Type for Thanksgiving
+holidayDateTableDataFrame$HolidaySeasonType <- 
+  ifelse( 
+    holidayDateTableDataFrame$Week1BeforeHoliday == 11 , 
+    "1 Week Before Thanksgiving" ,
+          ifelse( 
+            holidayDateTableDataFrame$Week2BeforeHoliday == 11 , 
+            "2 Weeks Before Thanksgiving" ,
+                  ifelse( 
+                    holidayDateTableDataFrame$Week1AfterHoliday == 11 , 
+                    "1 Week After Thanksgiving" ,
+                          ifelse( 
+                            holidayDateTableDataFrame$Week2AfterHoliday == 11 ,
+                            "2 Weeks After Thanksgiving" ,
+                                  ifelse( 
+                                    holidayDateTableDataFrame$IsHolidayDefined 
+                                    == 11 , "Thanksgiving" ,
+                                    holidayDateTableDataFrame$HolidaySeasonType 
+                                    ) ) ) ) )
+
+## Creating an ordered Holiday Season Type for Christmas
+holidayDateTableDataFrame$HolidaySeasonType <- 
+  ifelse( 
+    holidayDateTableDataFrame$Week1BeforeHoliday == 12 , 
+    "1 Week Before Christmas" ,
+          ifelse( 
+            holidayDateTableDataFrame$Week2BeforeHoliday == 12 , 
+            "2 Weeks Before Christmas" ,
+                  ifelse( 
+                    holidayDateTableDataFrame$Week1AfterHoliday == 12 , 
+                    "1 Week After Christmas" ,
+                          ifelse( 
+                            holidayDateTableDataFrame$Week2AfterHoliday == 12 , 
+                            "2 Weeks After Christmas" ,
+                                  ifelse( 
+                                    holidayDateTableDataFrame$IsHolidayDefined 
+                                    == 12 , "Christmas" ,
+                                    holidayDateTableDataFrame$HolidaySeasonType 
+                                    ) ) ) ) )
+
+holidayDateTableDataFrame$HolidaySeasonType = factor(
+  holidayDateTableDataFrame$HolidaySeasonType , 
+  ordered=TRUE , 
+  levels=c( 
+    "No Holiday" ,
+    "2 Weeks Before Super Bowl" ,
+    "1 Week Before Super Bowl" ,
+    "Super Bowl" ,
+    "1 Week After Super Bowl" ,
+    "2 Weeks After Super Bowl" ,
+    "2 Weeks Before Labor Day" ,
+    "1 Week Before Labor Day" ,
+    "Labor Day" ,
+    "1 Week After Labor Day" ,
+    "2 Weeks After Labor Day" ,
+    "2 Weeks Before Thanksgiving" ,
+    "1 Week Before Thanksgiving" ,
+    "Thanksgiving" ,
+    "1 Week After Thanksgiving" ,
+    "2 Weeks After Thanksgiving" ,
+    "2 Weeks Before Christmas" ,
+    "1 Week Before Christmas" ,
+    "Christmas" ,
+    "1 Week After Christmas" ,
+    "2 Weeks After Christmas"
+  )
+)
+```
+
+```{r mergeAgain}
+## Mering the sales per week and holiday list 
+totalSalesPerWeekDataFrame$HolidaySeasonType <- 
+  holidayDateTableDataFrame$HolidaySeasonType
+```
+
+
+```{r holidayStudySubsetting}
+## Subsetting only the holidays
+totalSalesPerWeekDataFrameDuringHolidays <- 
+  subset( totalSalesPerWeekDataFrame , 
+          totalSalesPerWeekDataFrame$Date >= '2010-08-27' & 
+            totalSalesPerWeekDataFrame$Date <= '2011-02-25' )
+```
+
+```{r plottingSubsetOfHolidays}
+## Plotting the subset of totalSalesPerWeekDataFrame
+ggplot( totalSalesPerWeekDataFrameDuringHolidays , 
+        aes(x=Date , y=TotalSalesInMillion , color = HolidaySeasonType ) ) + 
+  geom_line( aes(group=1) ) + 
+  geom_point(size = 2) +
+  scale_y_continuous(name="Total Sales in Millions" ) 
+```
 
 
 
 
 # 4. Stage 2: Formal Statistical Inferences
-## 4.1 Do Holiday Weeks Account for Higher Sales?
-## 4.2 Are Sales 
+## 4.1 Do Holiday Weeks Spike Sales Up?
+## 4.2 Do Bigger Stores contribute to Higher Sales Figures?
 
 # 5. Stage 3: Linear Regression: Predicting Weekly_Sales
-## 5.1 Predicting Store Weekly_Sales
-## 5.2 Predicting Store-Department Weekly_Sales
