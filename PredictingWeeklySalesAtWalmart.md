@@ -1,23 +1,9 @@
----
-title: "Predicting Weekly Sales at WalMart Stores"
-author: ""
-date: "August 31, 2015"
-output: 
-  html_document:
-    keep_md: yes
-    theme: cerulean
-    toc: yes
----
+# Predicting Weekly Sales at WalMart Stores
+  
+August 31, 2015  
 
 
-```{r setup, echo=FALSE , include=FALSE , fig.width=10, fig.height=10}
-# Setting up the R Markdown Report
-# echo & include is set to false because I do not want this on the report
-# enabling cache so we don't have to run the code everytime
-knitr::opts_chunk$set(cache=TRUE, out.width='750px' , dpi=200 )  
-# width of the report & to prevent Scientific notations for large numbers
-options(width=80 , scipen=10000)
-```
+
 
 <BR>
 
@@ -92,7 +78,8 @@ The four holidays fall inthe following weeks in the dataset:
 * Christmas: 31-Dec-10, 30-Dec-11, 28-Dec-12, 27-Dec-13
 
 ### 2.3.2 Ingesting the Data
-```{r ingest}
+
+```r
 ## Ingesting the data from the Data folder
 train <- read.csv("Data/train.csv")
 stores <- read.csv("Data/stores.csv")
@@ -103,7 +90,8 @@ test <- read.csv("Data/test.csv")
 ## 2.4 R Libraries Used
 The following libraries are used in this report:
 
-```{r librariesUsed}
+
+```r
 # Grammar of Graphics Plotting Library
 library(ggplot2)
 # To use 'melt'
@@ -122,19 +110,47 @@ library(lubridate)
 ## 3.1 Summary Statististics
 
 ### 3.1.1 The Training Dataset (train)
-```{r trainDatasetStr}
+
+```r
 str(train)
+```
+
+```
+## 'data.frame':	421570 obs. of  5 variables:
+##  $ Store       : int  1 1 1 1 1 1 1 1 1 1 ...
+##  $ Dept        : int  1 1 1 1 1 1 1 1 1 1 ...
+##  $ Date        : Factor w/ 143 levels "2010-02-05","2010-02-12",..: 1 2 3 4 5 6 7 8 9 10 ...
+##  $ Weekly_Sales: num  24924 46039 41596 19404 21828 ...
+##  $ IsHoliday   : logi  FALSE TRUE FALSE FALSE FALSE FALSE ...
 ```
 
 <BR>
 
 <code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 143 dates in total.
 
-```{r trainDatasetSummary}
+
+```r
 ## Changing the Date from "Format" type to "Date" Type 
 train$Date <- as.Date(train$Date)
 ## Getting the summary of the Data
 summary(train)
+```
+
+```
+##      Store           Dept            Date             Weekly_Sales   
+##  Min.   : 1.0   Min.   : 1.00   Min.   :2010-02-05   Min.   : -4989  
+##  1st Qu.:11.0   1st Qu.:18.00   1st Qu.:2010-10-08   1st Qu.:  2080  
+##  Median :22.0   Median :37.00   Median :2011-06-17   Median :  7612  
+##  Mean   :22.2   Mean   :44.26   Mean   :2011-06-18   Mean   : 15981  
+##  3rd Qu.:33.0   3rd Qu.:74.00   3rd Qu.:2012-02-24   3rd Qu.: 20206  
+##  Max.   :45.0   Max.   :99.00   Max.   :2012-10-26   Max.   :693099  
+##  IsHoliday      
+##  Mode :logical  
+##  FALSE:391909   
+##  TRUE :29661    
+##  NA's :0        
+##                 
+## 
 ```
 
 <BR>
@@ -142,21 +158,40 @@ There is no missing data in the dataset.
 
 As discussed in the Introduction, this report contains data of 45 stores - represented by Store. There are a total of 99 stores in all.
 
-The starting date for training dataset is ```r min(train$Date)```. It starts on a ```r weekdays(min(train$Date) )```. The last date recorded in the dataset is ```r max(train$Date)```, which is also a ```r weekdays( max( train$Date ) )```. There are ```r days<- as.numeric( max( train$Date )  - min(train$Date) ); days``` days between them - so the data consists of a total of ```r days/7 + 1``` weeks of data.
+The starting date for training dataset is ``2010-02-05``. It starts on a ``Friday``. The last date recorded in the dataset is ``2012-10-26``, which is also a ``Friday``. There are ``994`` days between them - so the data consists of a total of ``143`` weeks of data.
 
 It is interesting to note that for some departments the <code>Weekly_Sales</code> are negative. Returns and special offers cause these negative sales figures.
 
 There are no missing values in this dataset.
 
 ### 3.1.2 The Stores Dataset (stores)
-```{r storesDatasetStr}
+
+```r
 ## Structure of Stores Dataset
 str(stores)
 ```
 
-```{r storesSummary}
+```
+## 'data.frame':	45 obs. of  3 variables:
+##  $ Store: int  1 2 3 4 5 6 7 8 9 10 ...
+##  $ Type : Factor w/ 3 levels "A","B","C": 1 1 2 1 2 1 2 1 2 2 ...
+##  $ Size : int  151315 202307 37392 205863 34875 202505 70713 155078 125833 126512 ...
+```
+
+
+```r
 ## summary Statistics of Stores dataset
 summary(stores)
+```
+
+```
+##      Store    Type        Size       
+##  Min.   : 1   A:22   Min.   : 34875  
+##  1st Qu.:12   B:17   1st Qu.: 70713  
+##  Median :23   C: 6   Median :126512  
+##  Mean   :23          Mean   :130288  
+##  3rd Qu.:34          3rd Qu.:202307  
+##  Max.   :45          Max.   :219622
 ```
 
 No missing data.
@@ -165,36 +200,101 @@ No missing data.
 
 ### 3.1.3 The Features Dataset (features)
 
-```{r featuresDatasetStr}
+
+```r
 ## Structure of features dataset
 str(features)
 ```
 
+```
+## 'data.frame':	8190 obs. of  12 variables:
+##  $ Store       : int  1 1 1 1 1 1 1 1 1 1 ...
+##  $ Date        : Factor w/ 182 levels "2010-02-05","2010-02-12",..: 1 2 3 4 5 6 7 8 9 10 ...
+##  $ Temperature : num  42.3 38.5 39.9 46.6 46.5 ...
+##  $ Fuel_Price  : num  2.57 2.55 2.51 2.56 2.62 ...
+##  $ MarkDown1   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ MarkDown2   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ MarkDown3   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ MarkDown4   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ MarkDown5   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ CPI         : num  211 211 211 211 211 ...
+##  $ Unemployment: num  8.11 8.11 8.11 8.11 8.11 ...
+##  $ IsHoliday   : logi  FALSE TRUE FALSE FALSE FALSE FALSE ...
+```
+
 <code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 182 dates in total. This dataset is relevant for both the <code>train</code> and the <code>test</code> dataset.
 
-```{r featuresSummary}
+
+```r
 ## Changing the Date from "Format" type to "Date" Type 
 features$Date <- as.Date(features$Date)
 ## Summary Statistics of Features Dataset
 summary(features)
 ```
 
+```
+##      Store         Date             Temperature       Fuel_Price   
+##  Min.   : 1   Min.   :2010-02-05   Min.   : -7.29   Min.   :2.472  
+##  1st Qu.:12   1st Qu.:2010-12-17   1st Qu.: 45.90   1st Qu.:3.041  
+##  Median :23   Median :2011-10-31   Median : 60.71   Median :3.513  
+##  Mean   :23   Mean   :2011-10-31   Mean   : 59.36   Mean   :3.406  
+##  3rd Qu.:34   3rd Qu.:2012-09-14   3rd Qu.: 73.88   3rd Qu.:3.743  
+##  Max.   :45   Max.   :2013-07-26   Max.   :101.95   Max.   :4.468  
+##                                                                    
+##    MarkDown1        MarkDown2           MarkDown3           MarkDown4       
+##  Min.   : -2781   Min.   :  -265.76   Min.   :  -179.26   Min.   :    0.22  
+##  1st Qu.:  1578   1st Qu.:    68.88   1st Qu.:     6.60   1st Qu.:  304.69  
+##  Median :  4744   Median :   364.57   Median :    36.26   Median : 1176.42  
+##  Mean   :  7032   Mean   :  3384.18   Mean   :  1760.10   Mean   : 3292.94  
+##  3rd Qu.:  8923   3rd Qu.:  2153.35   3rd Qu.:   163.15   3rd Qu.: 3310.01  
+##  Max.   :103185   Max.   :104519.54   Max.   :149483.31   Max.   :67474.85  
+##  NA's   :4158     NA's   :5269        NA's   :4577        NA's   :4726      
+##    MarkDown5             CPI         Unemployment    IsHoliday      
+##  Min.   :  -185.2   Min.   :126.1   Min.   : 3.684   Mode :logical  
+##  1st Qu.:  1440.8   1st Qu.:132.4   1st Qu.: 6.634   FALSE:7605     
+##  Median :  2727.1   Median :182.8   Median : 7.806   TRUE :585      
+##  Mean   :  4132.2   Mean   :172.5   Mean   : 7.827   NA's :0        
+##  3rd Qu.:  4832.6   3rd Qu.:213.9   3rd Qu.: 8.567                  
+##  Max.   :771448.1   Max.   :229.0   Max.   :14.313                  
+##  NA's   :4140       NA's   :585     NA's   :585
+```
+
 The <code>features</code> dataset has missing variables for <code>Markdown1-5</code>, <code>CPI</code> & <code>Unemployment</code>.
 
 ### 3.1.4 The Test Dataset (test)
 
-```{r testDatasetStr}
+
+```r
 ## Structure of test dataset
 str(test)
 ```
 
+```
+## 'data.frame':	115064 obs. of  4 variables:
+##  $ Store    : int  1 1 1 1 1 1 1 1 1 1 ...
+##  $ Dept     : int  1 1 1 1 1 1 1 1 1 1 ...
+##  $ Date     : Factor w/ 39 levels "2012-11-02","2012-11-09",..: 1 2 3 4 5 6 7 8 9 10 ...
+##  $ IsHoliday: logi  FALSE FALSE FALSE TRUE FALSE FALSE ...
+```
+
 <code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 39 dates in total.
 
-```{r testSummary}
+
+```r
 ## Changing the Date from "Format" type to "Date" Type 
 test$Date <- as.Date(test$Date)
 ## Summary Statistics of test Dataset
 summary(test)
+```
+
+```
+##      Store            Dept            Date            IsHoliday      
+##  Min.   : 1.00   Min.   : 1.00   Min.   :2012-11-02   Mode :logical  
+##  1st Qu.:11.00   1st Qu.:18.00   1st Qu.:2013-01-04   FALSE:106136   
+##  Median :22.00   Median :37.00   Median :2013-03-15   TRUE :8928     
+##  Mean   :22.24   Mean   :44.34   Mean   :2013-03-14   NA's :0        
+##  3rd Qu.:33.00   3rd Qu.:74.00   3rd Qu.:2013-05-24                  
+##  Max.   :45.00   Max.   :99.00   Max.   :2013-07-26
 ```
 
 
@@ -202,7 +302,8 @@ summary(test)
 ### 3.2.1 Merging Train and Stores Datasets
 Since the <code>Type</code> & <code>Size</code> variables may influence the Weekly Sales, we are merging the <code>train</code> & <stores</code> datasets. We merge the data by <code>Store</code>.
 
-```{r mergeTrainStores}
+
+```r
 ## Merging train and stores by Store
 trainStoresMerge <- merge(train , stores , by = "Store")
 ```
@@ -210,7 +311,8 @@ trainStoresMerge <- merge(train , stores , by = "Store")
 ### 3.2.2 Merging Train, Stores and Features Datasets
 Since <code>Markdown1-5</code> and other variables could play an important role at predicting <code>Weekly_Sales</code>, this should be merged with the <code>trainStoresMerge</code> dataset. We merge the data by <code>Store</code> & <code>Date</code>.
 
-```{r mergeTrainStoresFeatures}
+
+```r
 ## Merging trainStoresMerge and features datasets
 trainStoresFeaturesMerge <- 
   merge( trainStoresMerge , features , by = c( "Store" , "Date" ) )
@@ -224,7 +326,8 @@ trainStoresFeaturesMerge$IsHoliday.y <- NULL
 ### 3.2.3 Merging Test, Stores and Features Datasets
 We similarily merge the <code>test</code>, <code>stores</code> & <code>features</code> to create the <code>testStoresFeaturesMerge</code> dataset.
 
-```{r mergeTestStoresFeatures}
+
+```r
 ## Merging test and stores by Store
 testStoresMerge <- merge(test , stores , by = "Store")
 ## Merging testStoresMerge and features datasets
@@ -243,7 +346,8 @@ testStoresFeaturesMerge$IsHoliday.y <- NULL
 ### 3.3.1 Total Sales Per Department in each Store
 The final goal of this report is to be able to predict the weekly sales for each department in a store. First we would like to understand which departments are present in the 45 different stores and their total sales.
 
-```{r salesDeptStore}
+
+```r
 ## running the sum function for each store & department
 storeDeptTotalSales <- tapply( 
   trainStoresFeaturesMerge$Weekly_Sales , 
@@ -273,8 +377,19 @@ rm(storeDeptTotalSales)
 summary( storeDeptTotalSalesDataFrame)
 ```
 
+```
+##      Store           Dept         TotalSales      
+##  Min.   : 1.0   Min.   : 1.00   Min.   :   -3567  
+##  1st Qu.:11.0   1st Qu.:19.00   1st Qu.:  137763  
+##  Median :22.0   Median :40.00   Median :  880317  
+##  Mean   :22.5   Mean   :40.49   Mean   : 2022582  
+##  3rd Qu.:33.0   3rd Qu.:62.00   3rd Qu.: 2609819  
+##  Max.   :45.0   Max.   :81.00   Max.   :26101498
+```
+
 #### 3.3.1.1 Heatmap - Store & Department Total Sales
-```{r heatmapStoreDept}
+
+```r
 ## Generating a Heatmap of the Department's Total Sales in each of 45 stores
 ggplot( storeDeptTotalSalesDataFrame , aes(x = Store, y = Dept)) + 
   geom_tile(aes(fill = TotalSales)) +
@@ -282,6 +397,8 @@ ggplot( storeDeptTotalSalesDataFrame , aes(x = Store, y = Dept)) +
     low="yellow", high="red" , labels = comma , name="Total Sales") +
   scale_y_continuous(name="Department")
 ```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/heatmapStoreDept-1.png" title="" alt="" width="750px" />
 <BR>
 From the heatmap we can draw the following broad conclusions:
 
@@ -294,7 +411,8 @@ Since there are many datapoints (45 stores, each having )
 ### 3.3.2 Store Total Sales Vs. Size
 Plotting the total sales of a store vs. Store Size. We first calculate the total sales per Store and plot it as a response (y-axis) to the Store size (x-axis) to understand the relationship between them.
 
-```{r salesStoreSize}
+
+```r
 ## Total Sales vs. Store Size - plotting the relationship
 ## calculating the sum of all the store sales
 StoreTotalSales <- 
@@ -307,19 +425,22 @@ stores$TotalSales <- StoreTotalSales
 stores$TotalSalesInMillion <- stores$TotalSales/1000000
 ```
 
-```{r plotStoreSalesType}
+
+```r
 ## Plotting the Total Sales vs. Store Size
 ggplot( stores , aes(x=Size , y=TotalSalesInMillion , color = Type ) ) + 
   geom_point( size=3) +  
   scale_y_continuous(name="Total Sales in Millions" ) + 
   scale_color_brewer(palette = "Dark2", name="Store Type" )
-
 ```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plotStoreSalesType-1.png" title="" alt="" width="750px" />
 
 This plot indicates that there is a postive relationship between the size of the store and total sales. Also Type 'A' Stores are mostly larger stores with bigger sales and Type 'C' Stores are small with lower sales.
 
 
-```{r storeTypeSummaryStatistics}
+
+```r
 ## box plot to show the summary statistics of the Type of Stores
 ggplot(data=stores, 
        aes(x=Type, y=TotalSalesInMillion, fill=Type) ) + 
@@ -330,7 +451,10 @@ ggplot(data=stores,
   scale_fill_brewer(name = "Store Type" , palette = "Dark2")
 ```
 
-```{r printingOutSummaryStatisticsOfTypeOfStore}
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeTypeSummaryStatistics-1.png" title="" alt="" width="750px" />
+
+
+```r
 ## calculating the summary statistics for each Type
 tabledTypeWiseSummaryStatistics <- 
   tapply(stores$TotalSalesInMillion , stores$Type , summary)
@@ -346,13 +470,28 @@ attributes(tabledTypeWiseSummaryStatistics)$dimnames[[1]] <-
 tabledTypeWiseSummaryStatistics
 ```
 
+```
+## $`Type A Store Summary Statistics`
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   37.16  149.30  196.80  196.90  246.30  301.40 
+## 
+## $`Type B Store Summary Statistics`
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   45.48   77.79  108.10  117.70  144.30  271.60 
+## 
+## $`Type C Store Summary Statistics`
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   43.29   57.05   68.46   67.58   78.22   90.57
+```
+
 
 From this we can hypothesize that the <code>Type</code> of store could be an important predictor of <code>Weekly_Sales</code>.
 
 ### 3.3.3 Total Sales Per Week - Time Series
 We discuss here the effect holidays have on Total Sales of 45 Stores.
 
-```{r totalSalesTimeSeries}
+
+```r
 ## Running tapply with sum to find the total sales per week
 totalSalesPerWeek <- 
   tapply( 
@@ -372,7 +511,8 @@ totalSalesPerWeekDataFrame$TotalSalesInMillion =
 ```
 
 
-```{r lagfunction}
+
+```r
 # function to handle lag
 lagpad <- function(x, k) {
   if( k > 0 ) {
@@ -385,7 +525,8 @@ lagpad <- function(x, k) {
 }
 ```
 
-```{r holidayList}
+
+```r
 ## Getting the holiday List
 ## Extracting the Holiday List
 holidayDateTable <- 
@@ -458,13 +599,15 @@ rm(holidayDateTable , totalSalesPerWeek)
 ```
 
 
-```{r merging salesperWeekHolidayList}
+
+```r
 ## Mering the sales per week and holiday list 
 totalSalesPerWeekDataFrame <- 
   merge( totalSalesPerWeekDataFrame, holidayDateTableDataFrame , by=2)
 ```
 
-```{r plottingSalesPerWeek}
+
+```r
 # Plotting Sales Per Week
 ggplot( totalSalesPerWeekDataFrame , 
         aes(x=Date , y=TotalSalesInMillion , color = HolidaySeasonType ) ) + 
@@ -473,6 +616,8 @@ ggplot( totalSalesPerWeekDataFrame ,
   scale_y_continuous(name="Total Sales in Millions" ) +
   scale_color_brewer(palette="Dark2" , name = "Season Type")
 ```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSalesPerWeek-1.png" title="" alt="" width="750px" />
 
 We can clearly see some trends here:
 
@@ -483,7 +628,8 @@ We can clearly see some trends here:
 * To be able to make better predictors, perhaps it would help to actually create separate factors for each of the holidays
 * It will be interesting to study the period between Aug 27, 2010 to Feb 25, 2011. This section has all the holidays - starting with Labor Day, Thanksgiving, Christmas & Super Bowl. Since the dataset will be smaller, we will perhaps understand the data better.
 
-```{r creatingDummyVariablesForHolidays}
+
+```r
 #####################################
 # Creating separate holiday dummy variables
 holidayDateTableDataFrame$IsHolidayDefined <- 
@@ -620,14 +766,16 @@ holidayDateTableDataFrame$HolidaySeasonType = factor(
 )
 ```
 
-```{r mergeAgain}
+
+```r
 ## Mering the sales per week and holiday list 
 totalSalesPerWeekDataFrame$HolidaySeasonType <- 
   holidayDateTableDataFrame$HolidaySeasonType
 ```
 
 
-```{r holidayStudySubsetting}
+
+```r
 ## Subsetting only the holidays
 totalSalesPerWeekDataFrameDuringHolidays <- 
   subset( totalSalesPerWeekDataFrame , 
@@ -635,7 +783,8 @@ totalSalesPerWeekDataFrameDuringHolidays <-
             totalSalesPerWeekDataFrame$Date <= '2011-02-25' )
 ```
 
-```{r plottingSubsetOfHolidays}
+
+```r
 ## Plotting the subset of totalSalesPerWeekDataFrame
 ggplot( totalSalesPerWeekDataFrameDuringHolidays , 
         aes(x=Date , y=TotalSalesInMillion , color = HolidaySeasonType ) ) + 
@@ -643,6 +792,8 @@ ggplot( totalSalesPerWeekDataFrameDuringHolidays ,
   geom_point(size = 2) +
   scale_y_continuous(name="Total Sales in Millions" ) 
 ```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSubsetOfHolidays-1.png" title="" alt="" width="750px" />
 
 
 

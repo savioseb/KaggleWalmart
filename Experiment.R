@@ -66,16 +66,45 @@ ggplot( storeDeptTotalSalesDataFrame , aes(x = Store, y = Dept)) +
 
 
 ## Total Sales vs. Store Size - plotting the relationship
--------------------------------------------------------------------
-## calculating the sum of all the store sales
-StoreTotalSales <- tapply(trainStoresFeaturesMerge$Weekly_Sales, trainStoresFeaturesMerge$Store, FUN = sum)
+## -------------------------------------------------------------------
+StoreTotalSales <- 
+  tapply(
+    trainStoresFeaturesMerge$Weekly_Sales, 
+    trainStoresFeaturesMerge$Store, 
+    FUN = sum)
 ## converting the table to a DataFrame
 stores$TotalSales <- StoreTotalSales
 stores$TotalSalesInMillion <- stores$TotalSales/1000000
 ## Plotting the Total Sales vs. Store Size
-ggplot( stores , aes(x=Size , y=TotalSales , color = Type ) ) + 
-  geom_point() +  
-  scale_y_continuous(name="Total Sales in Millions" )
+ggplot( stores , aes(x=Size , y=TotalSalesInMillion , color = Type ) ) + 
+  geom_point( size=3) +  
+  scale_y_continuous(name="Total Sales in Millions" ) + 
+  scale_color_brewer(palette = "Dark2", name="Store Type" )
+  
+## box plot to show the summary statistics of the Type of Stores
+ggplot(data=stores, 
+       aes(x=Type, y=TotalSalesInMillion, fill=Type) ) + 
+  geom_boxplot(outlier.shape = 15, outlier.size = 4) +
+  ## to show how the individual store sales are distributed
+  geom_jitter() +
+  scale_y_continuous(name="Total Sales in Millions" ) +
+  scale_fill_brewer(name = "Store Type" , palette = "Dark2")
+
+## calculating the summary statistics for each Type
+tabledTypeWiseSummaryStatistics <- 
+  tapply(stores$TotalSalesInMillion , stores$Type , summary)
+
+## Changing the Labels of the tabled Summary Statistics for printing
+attributes(tabledTypeWiseSummaryStatistics)$dimnames[[1]] <- 
+  c( 
+    "Type A Store Summary Statistics" , 
+    "Type B Store Summary Statistics" , 
+    "Type C Store Summary Statistics" )
+
+## Printing Summary Statistics for each Type of Store (based on Total Sales)
+tabledTypeWiseSummaryStatistics
+
+rm(StoreTotalSales)
 
 
 
