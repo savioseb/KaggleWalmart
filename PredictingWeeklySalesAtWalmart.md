@@ -1,4 +1,4 @@
-# Predicting Weekly Sales at WalMart Stores
+# Predicting Weekly Sales at Walmart Stores
   
 August 31, 2015  
 
@@ -8,22 +8,22 @@ August 31, 2015
 <BR>
 
 # 1. Executive Summary
-Retail stores need to be able to predict sales forecasts for the future and study the effect how strategic offers affect sales, especially during holiday season. Since the number of days in holidays are limited, it becomes more challenging to be able to accruately predict how different aspects affect sales.
+Retail stores need to be able to predict sales forecasts for the future and study the effect how strategic offers affect sales, especially during holiday season. Since the number of days in holidays are limited, it becomes more challenging to be able to accurately predict how different aspects affect sales.
 
-This report will focus on a WalMart Dataset that has Department-wise Weekly Sales of 45 WalMart stores. It will attempt to create a predictive model and also discuss the extent to which different factors affect the sales.
+This report will focus on a Walmart Data set that has Department-wise Weekly Sales of 45 Walmart stores. It will attempt to create a predictive model and also discuss the extent to which different factors affect the sales.
 
 
 # 2. Introduction
 
 
 ## 2.1 About the Solution Environment
-The authors implemented this solution in R. We have used R Markdown Report to create this document. First we explore and prepare the data set before carrying out formal statistical inferences on the dataset. We wrap the report by building a model to predict Weekly sales of the departments belonging to the 45 stores in this dataset.
+The authors implemented this solution in R. We have used R Markdown Report to create this document. First we explore and prepare the data set before carrying out formal statistical inferences on the data set. We wrap the report by building a model to predict Weekly sales of the departments belonging to the 45 stores in this data set.
 
 
 ## 2.2 About the Data
-The dataset under consideration is taken from a recruitment competition WalMart ran on Kaggle between February-May 2014. Each store has multiple departments and the end requirement is to be able to predict the sales for individual departments of each store.
+The data set under consideration is taken from a recruitment competition Walmart ran on Kaggle between February-May 2014. Each store has multiple departments and the end requirement is to be able to predict the sales for individual departments of each store.
 
-The training dataset has more than 400K records. The testing dataset has over 100K recrods.
+The training data set has more than 400K records. The testing data set has over 100K records.
 
 
 ### 2.2.1 The Challenge
@@ -41,13 +41,13 @@ The files available are the following:<BR>
 <IMAGE src="Images/DataFilesImage.png" />
 
 ### 2.3.1 The Data Files
-Here we discuss the various CSV Files that are given by WalMart.
+Here we discuss the various CSV Files that are given by Walmart.
 
 #### 2.3.1.1 stores.csv
 Contains size and type of 45 stores (45 records).
 
 #### 2.3.1.2 train.csv
-Weekly sales dataset from Februray 05, 2010 to November 11, 2012. It contains the following fields:
+Weekly sales data set from February 05, 2010 to November 11, 2012. It contains the following fields:
 
 * Store: store number
 * Dept: the department number
@@ -56,7 +56,7 @@ Weekly sales dataset from Februray 05, 2010 to November 11, 2012. It contains th
 * IsHoliday: whether the week is a special holiday week
 
 #### 2.3.1.3 test.csv
-The dataset with similar fields as train.csv, except without Weekly_Sales. This will be used to test the model with unseen data and can be evaulated by uploading the dataset to Kaggle.
+The data set with similar fields as train.csv, except without Weekly_Sales. This will be used to test the model with unseen data and can be evaluated by uploading the data set to Kaggle.
 
 #### 2.3.1.4 features.csv
 This data file contains additional relevant information relating to the physical and business environment around the store. The fields are as follows:
@@ -70,7 +70,7 @@ This data file contains additional relevant information relating to the physical
 * Unemployment - the unemployment rate
 * IsHoliday - whether the week is a special holiday week
 
-The four holidays fall inthe following weeks in the dataset:
+The four holidays fall in the following weeks in the data set:
 
 * Super Bowl: 12-Feb-10, 11-Feb-11, 10-Feb-12, 8-Feb-13
 * Labor Day: 10-Sep-10, 9-Sep-11, 7-Sep-12, 6-Sep-13
@@ -80,10 +80,23 @@ The four holidays fall inthe following weeks in the dataset:
 ### 2.3.2 Ingesting the Data
 
 ```r
-## Ingesting the data from the Data folder
+## Ingesting the data from the Data folder: Training Dataset
 train <- read.csv("Data/train.csv")
+```
+
+```r
+## Ingesting the data from the Data folder: Stores Dataset
 stores <- read.csv("Data/stores.csv")
+```
+
+```r
+## Ingesting the data from the Data folder: features Dataset
 features <- read.csv("Data/features.csv")
+```
+
+
+```r
+## Ingesting the data from the Data folder: testing Dataset
 test <- read.csv("Data/test.csv")
 ```
 
@@ -112,6 +125,7 @@ library(lubridate)
 ### 3.1.1 The Training Dataset (train)
 
 ```r
+## Structure of Train Dataset
 str(train)
 ```
 
@@ -154,15 +168,33 @@ summary(train)
 ```
 
 <BR>
-There is no missing data in the dataset.
+There is no missing data in the data set.
 
 As discussed in the Introduction, this report contains data of 45 stores - represented by Store. There are a total of 99 stores in all.
 
-The starting date for training dataset is ``2010-02-05``. It starts on a ``Friday``. The last date recorded in the dataset is ``2012-10-26``, which is also a ``Friday``. There are ``994`` days between them - so the data consists of a total of ``143`` weeks of data.
+The starting date for training data set is ``2010-02-05``. It starts on a ``Friday``. The last date recorded in the data set is ``2012-10-26``, which is also a ``Friday``. There are ``994`` days between them - so the data consists of a total of ``143`` weeks of data.
 
-It is interesting to note that for some departments the <code>Weekly_Sales</code> are negative. Returns and special offers cause these negative sales figures.
 
-There are no missing values in this dataset.
+#### 3.1.1.1 Weekly Sales
+It is interesting to note that for some departments the <code>Weekly_Sales</code> are **negative**. Returns and special offers cause these negative sales figures.
+
+The **Standard Deviation** for <code>Weekly_Sales</code> is ``22711.1835192``. The **mean** is ``15981.2581235`` and **median** is ``7612.03``. The mean and the median are very far apart, indicating that the data is skewed - in this case, extremely **right-skewed**. The following histogram depicts this relationship - where you can clearly observe the long tail towards the right making it extremely right-skewed.
+
+
+
+```r
+qplot(Weekly_Sales , 
+      data = train , 
+      geom = "histogram" , 
+      binwidth = 2500 ) +
+  scale_y_continuous( "Frequency of Occurance" ) +
+  scale_x_continuous( "Weekly Sales" )
+```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/weeklySalesSkew-1.png" title="" alt="" width="750px" />
+
+
+
 
 ### 3.1.2 The Stores Dataset (stores)
 
@@ -222,7 +254,7 @@ str(features)
 ##  $ IsHoliday   : logi  FALSE TRUE FALSE FALSE FALSE FALSE ...
 ```
 
-<code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 182 dates in total. This dataset is relevant for both the <code>train</code> and the <code>test</code> dataset.
+<code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 182 dates in total. This data set is relevant for both the <code>train</code> and the <code>test</code> data set.
 
 
 ```r
@@ -259,7 +291,7 @@ summary(features)
 ##  NA's   :4140       NA's   :585     NA's   :585
 ```
 
-The <code>features</code> dataset has missing variables for <code>Markdown1-5</code>, <code>CPI</code> & <code>Unemployment</code>.
+The <code>features</code> data set has missing variables for <code>Markdown1-5</code>, <code>CPI</code> & <code>Unemployment</code>.
 
 ### 3.1.4 The Test Dataset (test)
 
@@ -300,7 +332,7 @@ summary(test)
 
 ## 3.2 Data Preparation - Merging the Datasets
 ### 3.2.1 Merging Train and Stores Datasets
-Since the <code>Type</code> & <code>Size</code> variables may influence the Weekly Sales, we are merging the <code>train</code> & <stores</code> datasets. We merge the data by <code>Store</code>.
+Since the <code>Type</code> & <code>Size</code> variables may influence the Weekly Sales, we are merging the <code>train</code> & <stores</code> data sets. We merge the data by <code>Store</code>.
 
 
 ```r
@@ -309,7 +341,7 @@ trainStoresMerge <- merge(train , stores , by = "Store")
 ```
 
 ### 3.2.2 Merging Train, Stores and Features Datasets
-Since <code>Markdown1-5</code> and other variables could play an important role at predicting <code>Weekly_Sales</code>, this should be merged with the <code>trainStoresMerge</code> dataset. We merge the data by <code>Store</code> & <code>Date</code>.
+Since <code>Markdown1-5</code> and other variables could play an important role at predicting <code>Weekly_Sales</code>, this should be merged with the <code>trainStoresMerge</code> data set. We merge the data by <code>Store</code> & <code>Date</code>.
 
 
 ```r
@@ -317,14 +349,14 @@ Since <code>Markdown1-5</code> and other variables could play an important role 
 trainStoresFeaturesMerge <- 
   merge( trainStoresMerge , features , by = c( "Store" , "Date" ) )
 ## Clearing memory - removing intermediate datasets
-rm(trainStoresMerge , train)
+rm( trainStoresMerge )
 ## Fixing the name of the Column
 colnames(trainStoresFeaturesMerge)[5] <- "IsHoliday"
 trainStoresFeaturesMerge$IsHoliday.y <- NULL
 ```
 
 ### 3.2.3 Merging Test, Stores and Features Datasets
-We similarily merge the <code>test</code>, <code>stores</code> & <code>features</code> to create the <code>testStoresFeaturesMerge</code> dataset.
+We similarly merge the <code>test</code>, <code>stores</code> & <code>features</code> to create the <code>testStoresFeaturesMerge</code> data set.
 
 
 ```r
@@ -334,7 +366,7 @@ testStoresMerge <- merge(test , stores , by = "Store")
 testStoresFeaturesMerge <- 
   merge( testStoresMerge , features , by = c( "Store" , "Date" ) )
 ## Clearing Memory - removing intermediate Datasets
-rm( test , testStoresMerge , features )
+rm( testStoresMerge )
 ## Fixing the name of the Column
 colnames(testStoresFeaturesMerge)[5] <- "IsHoliday"
 testStoresFeaturesMerge$IsHoliday.y <- NULL
@@ -372,7 +404,7 @@ colnames( storeDeptTotalSalesDataFrame )[2:3] <- c("Dept" , "TotalSales" )
 storeDeptTotalSalesDataFrame$Dept <- 
   as.integer(storeDeptTotalSalesDataFrame$Dept)
 ## Freeing Memory - Removing the intermediate Matrix
-rm(storeDeptTotalSales)
+rm( storeDeptTotalSales )
 ## printing out summary statistics
 summary( storeDeptTotalSalesDataFrame)
 ```
@@ -400,13 +432,17 @@ ggplot( storeDeptTotalSalesDataFrame , aes(x = Store, y = Dept)) +
 
 <img src="PredictingWeeklySalesAtWalmart_files/figure-html/heatmapStoreDept-1.png" title="" alt="" width="750px" />
 <BR>
-From the heatmap we can draw the following broad conclusions:
+From the heat map we can draw the following broad conclusions:
 
 * The departments between 70-80 account for more sales than other departments
 * Some departments are missing in some stores
 
 
-Since there are many datapoints (45 stores, each having )
+```r
+## removing dataframe to free up memory
+rm( storeDeptTotalSalesDataFrame )
+```
+
 
 ### 3.3.2 Store Total Sales Vs. Size
 Plotting the total sales of a store vs. Store Size. We first calculate the total sales per Store and plot it as a response (y-axis) to the Store size (x-axis) to understand the relationship between them.
@@ -423,6 +459,7 @@ StoreTotalSales <-
 ## converting the table to a DataFrame
 stores$TotalSales <- StoreTotalSales
 stores$TotalSalesInMillion <- stores$TotalSales/1000000
+rm( StoreTotalSales )
 ```
 
 
@@ -436,7 +473,7 @@ ggplot( stores , aes(x=Size , y=TotalSalesInMillion , color = Type ) ) +
 
 <img src="PredictingWeeklySalesAtWalmart_files/figure-html/plotStoreSalesType-1.png" title="" alt="" width="750px" />
 
-This plot indicates that there is a postive relationship between the size of the store and total sales. Also Type 'A' Stores are mostly larger stores with bigger sales and Type 'C' Stores are small with lower sales.
+This plot indicates that there is a postie relationship between the size of the store and total sales. Also Type 'A' Stores are mostly larger stores with bigger sales and Type 'C' Stores are small with lower sales.
 
 
 
@@ -484,6 +521,12 @@ tabledTypeWiseSummaryStatistics
 ##   43.29   57.05   68.46   67.58   78.22   90.57
 ```
 
+```r
+## Removing table - not needed for further calculations
+rm( tabledTypeWiseSummaryStatistics )
+```
+
+From the graph, we can notice a Type B Outlier. A value is considered an outlier when it's more than 3 Standard Deviations from the mean.
 
 From this we can hypothesize that the <code>Type</code> of store could be an important predictor of <code>Weekly_Sales</code>.
 
@@ -513,7 +556,13 @@ totalSalesPerWeekDataFrame$TotalSalesInMillion =
 
 
 ```r
-# function to handle lag
+## function to handle lag
+## Since the in-built function in R to handle LAG is not working
+## x - vector that needs to be lagged
+## k - is the no of lags that need to be returned as a vector 
+##   - may be positive or negative
+##   - it returns 0 instead of NA for the missing values
+## returns a vector contained the lagged data with padded 0s for missing data
 lagpad <- function(x, k) {
   if( k > 0 ) {
     # It should actually be NA in the rep function
@@ -595,7 +644,7 @@ holidayDateTableDataFrame$Var1 =
   holidayDateTableDataFrame$Var2 = 
   holidayDateTableDataFrame$Freq = NULL
 ## Clearing Memory - removing intermediate Tables
-rm(holidayDateTable , totalSalesPerWeek)
+rm( holidayDateTable , totalSalesPerWeek )
 ```
 
 
@@ -797,9 +846,59 @@ ggplot( totalSalesPerWeekDataFrameDuringHolidays ,
 
 
 
+```r
+## removing the following columns because it may cause 
+## multi-collinearity issues once merged with the main data and
+## building a model with that
+holidayDateTableDataFrame$Week1BeforeHoliday = NULL
+holidayDateTableDataFrame$Week2BeforeHoliday = NULL
+holidayDateTableDataFrame$Week1AfterHoliday = NULL
+holidayDateTableDataFrame$Week2AfterHoliday = NULL
+holidayDateTableDataFrame$IsHoliday = NULL
+holidayDateTableDataFrame$IsHolidayDefined = NULL
+```
+
+### 3.3.4 Store-Department-wise Sales per Week - Time Series
+To see a representation of the granularity of the data, we would like to plot all the data points of Weekly Sales vs Time (Week)
+
+
+```r
+## plotting all the Weekly Sales figures - colored by Dept
+ggplot(trainStoresFeaturesMerge , 
+       aes(x=Date , y = Weekly_Sales , color = Dept ) ) +
+  geom_point() +
+  scale_y_continuous(name="Weekly Sales" )
+```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/allPoint-1.png" title="" alt="" width="750px" />
+
+While it is not easy to make sense of a graph with more than 400 thousand data points, here are some salient features that stand out:
+
+* Departments with the higher numbers (<code>Dept>=75</code>) have higher sales figures than the lower numbered departments (<code>Dept <=25</code>)
+* During Christmas we see a spike in a lower numbered department's sale
+* We see a repeating annual pattern. Possibly indicating that Week Numbers (eg: 50th week of the year) may be an important predictor variable
+
+
 
 # 4. Stage 2: Formal Statistical Inferences
-## 4.1 Do Holiday Weeks Spike Sales Up?
+## 4.1 On Average, Do Holiday Weeks Spike Sales Up?
+We would like to investigate if the sales figures are statistically higher during holiday weeks. We have seen earlier that visually it does appear that sales spike up during Thanksgiving and Christmas. We would like to statistically verify this.
+
+### 4.1.1 The Hypotheses
+Let us state our Hypotheses:
+
+* <B>Null Hypothesis (H~0~)</B> : On average, there is no difference in weekly sales figures during holiday weeks. In other words, there is no statisically significant difference between  <code>Weekly_Sales</code> numbers between holiday weeks and non-holiday weeks
+* <B>Alternate Hypothesis (H~A~)</B>: Our alternate hypothesis is that there is a statistically significant higher sales figure during holiday weeks (one-sided test)
+
+Mathematically, the hypothese are expressed below:
+
+* H~0~: μ~diff~ = 0
+* H~A~: μ~diff~ > 0
+
+### 4.1.2 The Data
+
+
+
 ## 4.2 Do Bigger Stores contribute to Higher Sales Figures?
 
 # 5. Stage 3: Linear Regression: Predicting Weekly_Sales

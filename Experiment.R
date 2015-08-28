@@ -1,6 +1,8 @@
+## Libraries used in the Project
 library(ggplot2)
 library(reshape2)
 library(scales)
+library(lubridate)
 options(scipen=10000)
 
 ## Loading the datasets
@@ -26,8 +28,8 @@ testStoresFeaturesMerge$IsHoliday.y <- NULL
 
 
 ## removing intermediate datasets
-rm(trainStoresMerge , train)
-rm( test , testStoresMerge , features )
+rm(trainStoresMerge )
+rm( testStoresMerge )
 
 
 # unique store department sales
@@ -62,7 +64,8 @@ ggplot( storeDeptTotalSalesDataFrame , aes(x = Store, y = Dept)) +
   scale_fill_gradient(low="yellow", high="red" , labels = comma , name="Total Sales") +
   scale_y_continuous(name="Department")
 
-
+## removing dataframe to free up memory
+rm( storeDeptTotalSalesDataFrame )
 
 
 ## Total Sales vs. Store Size - plotting the relationship
@@ -104,7 +107,7 @@ attributes(tabledTypeWiseSummaryStatistics)$dimnames[[1]] <-
 ## Printing Summary Statistics for each Type of Store (based on Total Sales)
 tabledTypeWiseSummaryStatistics
 
-rm(StoreTotalSales)
+rm(StoreTotalSales , tabledTypeWiseSummaryStatistics )
 
 
 
@@ -279,10 +282,6 @@ holidayDateTableDataFrame$HolidaySeasonType = factor(
 ## Mering the sales per week and holiday list 
 totalSalesPerWeekDataFrame$HolidaySeasonType <- holidayDateTableDataFrame$HolidaySeasonType
 
-
-#####################################
-
-
 ## Subsetting only the holidays
 totalSalesPerWeekDataFrameDuringHolidays <- 
   subset( totalSalesPerWeekDataFrame , 
@@ -293,16 +292,71 @@ ggplot( totalSalesPerWeekDataFrameDuringHolidays , aes(x=Date , y=TotalSalesInMi
   geom_point(size = 3) +
   scale_y_continuous(name="Total Sales in Millions" )
 
+## removing the following columns because it may cause 
+## multi-collinearity issues once merged with the main data and
+## building a model with that
+holidayDateTableDataFrame$Week1BeforeHoliday = NULL
+holidayDateTableDataFrame$Week2BeforeHoliday = NULL
+holidayDateTableDataFrame$Week1AfterHoliday = NULL
+holidayDateTableDataFrame$Week2AfterHoliday = NULL
+holidayDateTableDataFrame$IsHoliday = NULL
+holidayDateTableDataFrame$IsHolidayDefined = NULL
 
 
 
+#################################################################
+## 3.3.4 Store-Department-wise Sales per Week - Time Series
+################################################################
+ggplot(trainStoresFeaturesMerge , 
+       aes(x=Date , y = Weekly_Sales , color = Dept ) ) +
+  geom_point() +
+  scale_y_continuous(name="Weekly Sales" )
+
+qplot(Weekly_Sales , 
+      data = trainStoresFeaturesMerge , 
+      geom = "histogram" , 
+      binwidth = 2500 ) +
+  scale_y_continuous( "Frequency of Occurance" ) +
+  scale_x_continuous( "Weekly Sales" )
+
+train$LogOfWeekly_Sales <- log(train$Weekly_Sales)
+
+summary(train$LogOfWeekly_Sales)
+trainLogNAN <- subset(train , is.na(train$LogOfWeekly_Sales) == T )
+trainNotNAN <- subset(train , is.na(train$LogOfWeekly_Sales) == F )
+trainLogInf <- subset(train , is.infinite(train$LogOfWeekly_Sales) == T )
+train0 <- subset( train, train$Weekly_Sales <= 0 )
+
+
+trainNotNANMore <- subset(trainNotNAN, trainNotNAN$LogOfWeekly_Sales > 0)
+
+qplot( log(Weekly_Sales) , 
+      data = trainStoresFeaturesMerge , 
+      geom = "histogram" ) +
+  scale_y_continuous( "Frequency of Occurance" ) +
+  scale_x_continuous( "Weekly Sales" )
+
+ggplot(data=trainStoresFeaturesMerge, 
+       aes(x=Type, y=Weekly_Sales, fill=Type) ) + 
+  geom_boxplot()
+
+
+
+## Function to calculate Week
+## date - the date for which the Week Number should be calculated
+## returns week Number
+weekNumber <- function( date ) {
+  d1 <- as.Date( paste0( year(d2) , "-01-01" ) )
+  as.integer((date-d1)/7)+1
+}
 
 
 
 
 # Model Building
-#model <- lm( Weekly_Sales ~ . , data = train )
-
+modelNot <- lm( Weekly_Sales ~ . -LogOfWeekly_Sales , data = trainNotNANMore )
+modelLog <- lm( LogOfWeekly_Sales ~ . -Weekly_Sales , data = trainNotNANMore )
+summary(trainNotNANMore)
 
 
 
