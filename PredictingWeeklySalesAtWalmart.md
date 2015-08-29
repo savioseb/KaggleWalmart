@@ -113,6 +113,12 @@ library(reshape2)
 library(scales)
 # to get the month number from date variable
 library(lubridate)
+# to calculate Kurtosis
+library(e1071)
+## to be able to plot in grids
+library(grid)
+## to be able to plot in grids
+library(gridExtra)
 ```
 
 
@@ -175,25 +181,226 @@ As discussed in the Introduction, this report contains data of 45 stores - repre
 The starting date for training data set is ``2010-02-05``. It starts on a ``Friday``. The last date recorded in the data set is ``2012-10-26``, which is also a ``Friday``. There are ``994`` days between them - so the data consists of a total of ``143`` weeks of data.
 
 
-#### 3.1.1.1 Weekly Sales
+
+
+#### 3.1.1.1 Heavily Right-Skewed Weekly Sales
 It is interesting to note that for some departments the <code>Weekly_Sales</code> are **negative**. Returns and special offers cause these negative sales figures.
 
-The **Standard Deviation** for <code>Weekly_Sales</code> is ``22711.1835192``. The **mean** is ``15981.2581235`` and **median** is ``7612.03``. The mean and the median are very far apart, indicating that the data is skewed - in this case, extremely **right-skewed**. The following histogram depicts this relationship - where you can clearly observe the long tail towards the right making it extremely right-skewed.
+The **Standard Deviation** for <code>Weekly_Sales</code> is ``22711.18``. The **mean** is ``15981.26`` and **median** is ``7612.03``. The mean and the median are very far apart, indicating that the data is skewed - in this case, extremely **right-skewed**. The following histogram depicts this relationship - where you can clearly observe the long tail towards the right making it extremely right-skewed.
 
 
 
 ```r
-qplot(Weekly_Sales , 
-      data = train , 
-      geom = "histogram" , 
-      binwidth = 2500 ) +
+## plotting Weekly_Sales with binwidth of 5000. 
+## Mean and median are far from each other
+ggplot( train, aes( x = Weekly_Sales ) ) +
+  geom_histogram(binwidth=5000 ) + 
+  ## Vertical line indicating the mean value
+  geom_vline( aes( xintercept = mean( Weekly_Sales ) ), color="red" ) +
   scale_y_continuous( "Frequency of Occurance" ) +
   scale_x_continuous( "Weekly Sales" )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/weeklySalesSkew-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/weeklySalesSkew-1.png" title="" alt="" width="800px" />
 
 
+Since the data is highle skewed, it would be more appropriate use log transformation to remove the skew to make make the data fit the assumptions of inferential statistics. But before we do that, we need to take care of Negative and Zero Values in the data.
+
+#### 3.1.1.2 Dealing with Negative and 0 Weekly_Sales
+Since Log transformation of negative numbers yeild <code>NA</code> and log transformation of 0 is a negative infinity value, we need to handle these values appropriately.
+
+Let us first find the total count of numbers that fit this description:
+
+
+
+```r
+## subsetting the values that are negative and 0
+train0 <- subset( train, train$Weekly_Sales <= 0 )
+### Printing the first 5 rows of the data with negative and 0 values
+head( train0 )
+```
+
+```
+##      Store Dept       Date Weekly_Sales IsHoliday
+## 847      1    6 2012-08-10      -139.65     FALSE
+## 2385     1   18 2012-05-04        -1.27     FALSE
+## 6049     1   47 2010-02-19      -863.00     FALSE
+## 6050     1   47 2010-03-12      -698.00     FALSE
+## 6052     1   47 2010-10-08       -58.00     FALSE
+## 6056     1   47 2011-03-11         0.00     FALSE
+```
+
+
+* The data set represents a paltry ``0.3%`` of the full dataset - it has ``1358`` observations
+* The absolute sum of this <code>Weekly_Sales</code> in this filtered data set is only ``0.001%`` of the overall sum of <code>Weekly_Sales</code> 
+* The absolute maximum value of this dataset is ``4988.94``
+
+Owing to the reasons mentioned above, it would be good to remove these observations from the dataset before continuting to do a Log Transoformation of <code>Weekly_Sales</code>.
+
+
+
+
+
+#### 3.1.1.3 Log Transformation of Weekly Sales
+
+
+```r
+## Create subset of train data set
+train <- subset( train , train$Weekly_Sales > 0 )
+## Make Log Transformation for Weekly_Sales
+train$Log_Weekly_Sales <- log(train$Weekly_Sales)
+## remove train0
+rm( train0 )
+```
+
+```
+## Warning in rm(train0): object 'train0' not found
+```
+
+```r
+## summary statistics of Weekly_Sales and Log_Weekly_Sales
+summary(train$Weekly_Sales)
+```
+
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##       0    2120    7662   16030   20270  693100
+```
+
+```r
+summary( train$Log_Weekly_Sales )
+```
+
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  -4.605   7.659   8.944   8.521   9.917  13.450
+```
+
+We notice that the Median and the mean are more closer to teach other. The histogram below shows that the data is less skewed than earlier:
+
+
+```r
+## plotting the log( Weekly_Sales ) histogram
+ggplot( train, aes( x = Log_Weekly_Sales ) ) +
+  geom_histogram(binwidth=.2 ) + 
+  ## Vertical line indicating the mean value
+  geom_vline( aes( xintercept = mean( Log_Weekly_Sales ) ), color="red" ) +
+  scale_y_continuous( "Frequency of Occurance" ) +
+  scale_x_continuous( "log( Weekly_Sales )" )
+```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/logWeeklySalesHistogram-1.png" title="" alt="" width="800px" />
+
+The histogram is slightly **left-skewed**, but more normal than the previous distribution of <code>Weekly_Sales</code>.
+
+
+#### 3.1.1.4 Detailed Summary Statistics of Weekly Sales
+
+```r
+## Function to calculate the Standard Error
+## x: the vector of numerical values
+## returns the standard error of the vector
+standardError <- function( x ) {
+  sd( x )/sqrt( length( x ) )
+}
+```
+
+
+```r
+## Calculating Detailed Summary Statistics for Weekly_Sales
+Weekly_Sales <- c( 
+  mean( train$Weekly_Sales ) ,
+  standardError(  train$Weekly_Sales ) ,
+  median( train$Weekly_Sales) ,
+  sd( train$Weekly_Sales ) ,
+  var( train$Weekly_Sales ) , 
+  kurtosis( train$Weekly_Sales ) ,
+  skewness( train$Weekly_Sales ) ,
+  range( train$Weekly_Sales )[2]-range( train$Weekly_Sales )[1] ,
+  min( train$Weekly_Sales ) ,
+  max( train$Weekly_Sales ) ,
+  sum( train$Weekly_Sales ),
+  length( train$Weekly_Sales ) 
+)
+```
+
+
+```r
+## Calculating Detailed Summary Statistics for Weekly_Sales
+Log_Weekly_Sales <- c( 
+  mean( train$Log_Weekly_Sales ) ,
+  standardError(  train$Log_Weekly_Sales ) ,
+  median( train$Log_Weekly_Sales) ,
+  sd( train$Log_Weekly_Sales ) ,
+  var( train$Log_Weekly_Sales ) , 
+  kurtosis( train$Log_Weekly_Sales ) ,
+  skewness( train$Log_Weekly_Sales ) ,
+  range( train$Log_Weekly_Sales )[2]-range( train$Log_Weekly_Sales )[1] ,
+  min( train$Log_Weekly_Sales ) ,
+  max( train$Log_Weekly_Sales ) ,
+  sum( train$Log_Weekly_Sales ),
+  length( train$Log_Weekly_Sales ) 
+)
+```
+
+
+```r
+## Row Headings of the Summary statistics
+Description <- c(
+  "Mean",
+  "Standard Error" ,
+  "Median" , 
+  "Standard Deviation" ,
+  "Variance" , 
+  "Kurtosis" ,
+  "Skewness" ,
+  "Range" ,
+  "Min" ,
+  "Max" ,
+  "Sum" ,
+  "Count" 
+)
+```
+
+
+```r
+## Making a dataframe with the data
+Detailed_Summary_Statistics_on_Weekly_Sales <- 
+  data.frame( 
+    Description=Description , 
+    Weekly_Sales = Weekly_Sales ,
+    Log_Weekly_Sales = Log_Weekly_Sales
+    )
+## printing out the detailed summary statistics 
+print( Detailed_Summary_Statistics_on_Weekly_Sales , row.names = F )
+```
+
+```
+##         Description      Weekly_Sales  Log_Weekly_Sales
+##                Mean      16033.114591       8.520815008
+##      Standard Error         35.063520       0.003160895
+##              Median       7661.700000       8.943989170
+##  Standard Deviation      22729.492116       2.049010764
+##            Variance  516629811.850102       4.198445111
+##            Kurtosis         21.460407       2.221131837
+##            Skewness          3.258918      -1.305705773
+##               Range     693099.350000      18.054098831
+##                 Min          0.010000      -4.605170186
+##                 Max     693099.360000      13.448928645
+##                 Sum 6737307148.670000 3580548.716211106
+##               Count     420212.000000  420212.000000000
+```
+
+```r
+## Removing intermediate data
+rm( 
+  Weekly_Sales ,  
+  Log_Weekly_Sales , 
+  Description , 
+  Detailed_Summary_Statistics_on_Weekly_Sales )
+```
+
+The **Kurtosis** value of <code>Log_Weekly_Sales</code> indicates that it is peaked - unimodal data.
 
 
 ### 3.1.2 The Stores Dataset (stores)
@@ -228,6 +435,52 @@ summary(stores)
 
 No missing data.
 
+The stores are grouped into types, and it appears to be mostly a function of its size. The following boxplot indicates this:
+
+
+```r
+## box plot to show the summary statistics of the Type of Stores and their sizes
+ggplot(data=stores, 
+       aes(x=Type, y=Size, fill=Type) ) + 
+  geom_boxplot(outlier.shape = 15, outlier.size = 4) +
+  ## to show how the individual store sizes are distributed
+  geom_jitter() +
+  scale_y_continuous( name="Store Size" ) + 
+  scale_fill_brewer( name = "Store Type" , palette = "Dark2")
+```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeSizeBoxPlot-1.png" title="" alt="" width="800px" />
+
+
+```r
+## Standard Deviation of each type of Store
+tapply( stores$Size , stores$Type , sd )
+```
+
+```
+##         A         B         C 
+## 49392.621 32371.138  1304.145
+```
+
+```r
+## Median of each Type of Store
+tapply( stores$Size , stores$Type , median )
+```
+
+```
+##      A      B      C 
+## 202406 114533  39910
+```
+
+```r
+## Mean of each type of Store
+tapply( stores$Size , stores$Type , mean )
+```
+
+```
+##         A         B         C 
+## 177247.73 101190.71  40541.67
+```
 
 
 ### 3.1.3 The Features Dataset (features)
@@ -403,20 +656,23 @@ colnames( storeDeptTotalSalesDataFrame )[2:3] <- c("Dept" , "TotalSales" )
 ## Changing the Dept Type from String to Numeric
 storeDeptTotalSalesDataFrame$Dept <- 
   as.integer(storeDeptTotalSalesDataFrame$Dept)
-## Freeing Memory - Removing the intermediate Matrix
-rm( storeDeptTotalSales )
 ## printing out summary statistics
 summary( storeDeptTotalSalesDataFrame)
 ```
 
 ```
-##      Store           Dept         TotalSales      
-##  Min.   : 1.0   Min.   : 1.00   Min.   :   -3567  
-##  1st Qu.:11.0   1st Qu.:19.00   1st Qu.:  137763  
-##  Median :22.0   Median :40.00   Median :  880317  
-##  Mean   :22.5   Mean   :40.49   Mean   : 2022582  
-##  3rd Qu.:33.0   3rd Qu.:62.00   3rd Qu.: 2609819  
-##  Max.   :45.0   Max.   :81.00   Max.   :26101498
+##      Store            Dept         TotalSales      
+##  Min.   : 1.00   Min.   : 1.00   Min.   :       0  
+##  1st Qu.:11.00   1st Qu.:19.00   1st Qu.:  142430  
+##  Median :22.00   Median :40.00   Median :  884694  
+##  Mean   :22.47   Mean   :40.48   Mean   : 2027477  
+##  3rd Qu.:33.00   3rd Qu.:62.00   3rd Qu.: 2623710  
+##  Max.   :45.00   Max.   :81.00   Max.   :26101498
+```
+
+```r
+## Freeing Memory
+rm( storeDeptTotalSales )
 ```
 
 #### 3.3.1.1 Heatmap - Store & Department Total Sales
@@ -430,7 +686,7 @@ ggplot( storeDeptTotalSalesDataFrame , aes(x = Store, y = Dept)) +
   scale_y_continuous(name="Department")
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/heatmapStoreDept-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/heatmapStoreDept-1.png" title="" alt="" width="800px" />
 <BR>
 From the heat map we can draw the following broad conclusions:
 
@@ -465,30 +721,43 @@ rm( StoreTotalSales )
 
 ```r
 ## Plotting the Total Sales vs. Store Size
-ggplot( stores , aes(x=Size , y=TotalSalesInMillion , color = Type ) ) + 
+scatterPlotStoreSize <- ggplot( stores , aes(x=Size , y=TotalSalesInMillion , color = Type ) ) + 
   geom_point( size=3) +  
   scale_y_continuous(name="Total Sales in Millions" ) + 
-  scale_color_brewer(palette = "Dark2", name="Store Type" )
+  scale_color_brewer(palette = "Dark2", name="Store Type" ) +
+  theme( legend.position = "bottom" )
 ```
-
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plotStoreSalesType-1.png" title="" alt="" width="750px" />
-
-This plot indicates that there is a postie relationship between the size of the store and total sales. Also Type 'A' Stores are mostly larger stores with bigger sales and Type 'C' Stores are small with lower sales.
-
 
 
 ```r
 ## box plot to show the summary statistics of the Type of Stores
-ggplot(data=stores, 
+boxplotStoreSize <- ggplot(data=stores, 
        aes(x=Type, y=TotalSalesInMillion, fill=Type) ) + 
   geom_boxplot(outlier.shape = 15, outlier.size = 4) +
   ## to show how the individual store sales are distributed
   geom_jitter() +
   scale_y_continuous(name="Total Sales in Millions" ) +
-  scale_fill_brewer(name = "Store Type" , palette = "Dark2")
+  scale_fill_brewer(name = "Store Type" , palette = "Dark2") +
+  theme( legend.position = "bottom" )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeTypeSummaryStatistics-1.png" title="" alt="" width="750px" />
+
+```r
+## arranging both the plots in one grid
+grid.arrange( scatterPlotStoreSize , boxplotStoreSize , nrow = 1 )
+```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeTypeScatterBoxGrid-1.png" title="" alt="" width="800px" />
+
+```r
+## removing the plots from memory
+rm( scatterPlotStoreSize , boxplotStoreSize )
+```
+
+This plot indicates that there is a postie relationship between the size of the store and total sales. Also Type 'A' Stores are mostly larger stores with bigger sales and Type 'C' Stores are small with lower sales.
+
+
+
 
 
 ```r
@@ -518,7 +787,7 @@ tabledTypeWiseSummaryStatistics
 ## 
 ## $`Type C Store Summary Statistics`
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##   43.29   57.05   68.46   67.58   78.22   90.57
+##   43.29   57.05   68.46   67.58   78.23   90.57
 ```
 
 ```r
@@ -637,13 +906,11 @@ holidayDateTableDataFrame$IsHolidaySeason <-
   holidayDateTableDataFrame$Week1AfterHoliday * .6 +
   holidayDateTableDataFrame$Week2AfterHoliday *.2
 
-
-
 ## Removing unneccesary Columns
 holidayDateTableDataFrame$Var1 = 
   holidayDateTableDataFrame$Var2 = 
   holidayDateTableDataFrame$Freq = NULL
-## Clearing Memory - removing intermediate Tables
+## Clearing Memory - removing intermediate Tables 
 rm( holidayDateTable , totalSalesPerWeek )
 ```
 
@@ -666,7 +933,7 @@ ggplot( totalSalesPerWeekDataFrame ,
   scale_color_brewer(palette="Dark2" , name = "Season Type")
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSalesPerWeek-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSalesPerWeek-1.png" title="" alt="" width="800px" />
 
 We can clearly see some trends here:
 
@@ -705,6 +972,14 @@ holidayDateTableDataFrame$Week1AfterHoliday <-
   lagpad(holidayDateTableDataFrame$IsHolidayDefined , 1)
 holidayDateTableDataFrame$Week2AfterHoliday <- 
   lagpad(holidayDateTableDataFrame$IsHolidayDefined , 2)
+
+## Creating a variable to hold the holiday type season id
+holidayDateTableDataFrame$HolidaySeasonId <- as.factor(
+  holidayDateTableDataFrame$Week1BeforeHoliday + 
+  holidayDateTableDataFrame$Week2BeforeHoliday +
+  holidayDateTableDataFrame$IsHolidayDefined +
+  holidayDateTableDataFrame$Week1AfterHoliday +
+  holidayDateTableDataFrame$Week2AfterHoliday )
 
 
 ## Creating an ordered Holiday Season Type for Super Bowl
@@ -820,6 +1095,9 @@ holidayDateTableDataFrame$HolidaySeasonType = factor(
 ## Mering the sales per week and holiday list 
 totalSalesPerWeekDataFrame$HolidaySeasonType <- 
   holidayDateTableDataFrame$HolidaySeasonType
+## Merging the season Type with sales per week
+totalSalesPerWeekDataFrame$HolidaySeasonId <- 
+  holidayDateTableDataFrame$HolidaySeasonId
 ```
 
 
@@ -836,13 +1114,25 @@ totalSalesPerWeekDataFrameDuringHolidays <-
 ```r
 ## Plotting the subset of totalSalesPerWeekDataFrame
 ggplot( totalSalesPerWeekDataFrameDuringHolidays , 
-        aes(x=Date , y=TotalSalesInMillion , color = HolidaySeasonType ) ) + 
+        aes(x=Date , y=TotalSalesInMillion , 
+            color = HolidaySeasonId ) ) + 
   geom_line( aes(group=1) ) + 
   geom_point(size = 2) +
-  scale_y_continuous(name="Total Sales in Millions" ) 
+  scale_y_continuous(name="Total Sales in Millions" )  +
+  scale_color_brewer(
+    palette="Dark2" , 
+    name = "Holiday Season" ,
+    labels = c( 
+      "No Holiday" , 
+      "Super Bowl" ,
+      "Labor Day" , 
+      "Thanksgiving" ,
+      "Christmas"
+      )
+    ) 
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSubsetOfHolidays-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSubsetOfHolidays-1.png" title="" alt="" width="800px" />
 
 
 
@@ -856,6 +1146,8 @@ holidayDateTableDataFrame$Week1AfterHoliday = NULL
 holidayDateTableDataFrame$Week2AfterHoliday = NULL
 holidayDateTableDataFrame$IsHoliday = NULL
 holidayDateTableDataFrame$IsHolidayDefined = NULL
+## freeing memory
+rm( totalSalesPerWeekDataFrame , totalSalesPerWeekDataFrameDuringHolidays )
 ```
 
 ### 3.3.4 Store-Department-wise Sales per Week - Time Series
@@ -870,13 +1162,42 @@ ggplot(trainStoresFeaturesMerge ,
   scale_y_continuous(name="Weekly Sales" )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/allPoint-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/allPoint-1.png" title="" alt="" width="800px" />
 
 While it is not easy to make sense of a graph with more than 400 thousand data points, here are some salient features that stand out:
 
 * Departments with the higher numbers (<code>Dept>=75</code>) have higher sales figures than the lower numbered departments (<code>Dept <=25</code>)
 * During Christmas we see a spike in a lower numbered department's sale
 * We see a repeating annual pattern. Possibly indicating that Week Numbers (eg: 50th week of the year) may be an important predictor variable
+
+
+
+```r
+## Function to calculate Week
+## date - the date for which the Week Number should be calculated
+## returns week Number
+weekNumber <- function( date ) {
+  d1 <- as.Date( paste0( year(date) , "-01-01" ) )
+  as.integer((date-d1)/7)+1
+}
+```
+
+
+```r
+## Adding the Week Number to the holidayDateTableDataFrame
+holidayDateTableDataFrame$WeekNumber <- weekNumber( holidayDateTableDataFrame$Date )
+## Adding Month to holidayDateTableDataFrame
+holidayDateTableDataFrame$Month <- month( holidayDateTableDataFrame$Date )
+```
+
+We have created Week and month numbers to influence the regression model we will develop in Section 5.
+
+
+```r
+## Merging holidayDateTableDataFrame with trainStoresFeaturesMerge
+trainStoresFeaturesMerge <- 
+  merge( trainStoresFeaturesMerge , holidayDateTableDataFrame , by = "Date" )
+```
 
 
 
@@ -896,9 +1217,359 @@ Mathematically, the hypothese are expressed below:
 * H~A~: μ~diff~ > 0
 
 ### 4.1.2 The Data
+We need to separate the datasets into Holiday and Non-holiday weeks and then calculate the point estimate.
 
 
+```r
+## Creating the datasets for Holiday and NotHoliday
+Hyp_NotHoliday <- subset( trainStoresFeaturesMerge , IsHoliday == FALSE );
+Hyp_Holiday <- subset( trainStoresFeaturesMerge , IsHoliday == TRUE );
 
-## 4.2 Do Bigger Stores contribute to Higher Sales Figures?
+## Getting the Number of rows in each dataset
+nrow( Hyp_NotHoliday )
+```
+
+```
+## [1] 390652
+```
+
+```r
+nrow( Hyp_Holiday )
+```
+
+```
+## [1] 29560
+```
+
+### 4.1.3 Central Limit Theorm: Checking the Conditions for Hypothesis Testing for Paired Data
+The conditions for hypothesis testing:
+
+* <B>Independence:</B> Sampled observations must be independent. Random sample must be collected and if it is without replacement then the sample size must be less than 10% of the Population
+* <B>Sample Size / Skew: </B> The no of elements must be more than 30.
+
+We select a size of <code>2500</code> which is less than 10% of <code>Hyp_Holiday</code>.
+
+
+```r
+## Number of sample elements to collect from population 
+## should be <10% of holiday Week Population
+ndiff <- 2500
+## Seeding to ensure the randomness can be repeated
+set.seed(1101)
+## Getting a sample of elements (ndiff) (<10% of Holiday Weeks)
+Holiday_Sample <- sample( Hyp_Holiday$Log_Weekly_Sales , ndiff )
+head(Holiday_Sample)
+```
+
+```
+## [1]  9.917754  9.458827  8.332939  4.249637  9.247995 11.524153
+```
+
+```r
+NotHoliday_Sample <- sample( Hyp_NotHoliday$Log_Weekly_Sales , ndiff )
+head(NotHoliday_Sample)
+```
+
+```
+## [1]  9.769958  7.077498  8.362108 10.209713  8.742134  5.934894
+```
+
+
+```r
+## combining both the sample into one x-Axis Variable
+xVar <- c(NotHoliday_Sample , Holiday_Sample )
+## Creating the color Variable
+colorVar <- as.factor(c(rep(1, ndiff), rep(2, ndiff ) ) )
+## creating the dataframe
+sampleDensityDf <- data.frame( xVar ,  colorVar )
+## the density plot showing the 
+## Not Holiday and Holiday values of Log(Weekly_Sales)
+plottingDensity <- ggplot( sampleDensityDf , aes(x = xVar, fill = colorVar) ) + 
+  geom_density( alpha = .2 ) +
+  scale_x_continuous( "log(Weekly_Sales)" ) +
+  scale_fill_discrete( 
+    name = "Sample" , labels=c( "Not Holiday", "Holiday" ) ) +
+  scale_y_continuous( "Density" ) +
+  theme( legend.position = "bottom" )
+## box plot to show the Density Distribution
+boxPlotDensity <- ggplot( sampleDensityDf , aes( colorVar , xVar ) ) + 
+  geom_boxplot( aes( fill = colorVar ) ) + 
+  scale_y_continuous( "log(Weekly_Sales)" ) +
+  scale_fill_discrete( 
+    name = "Sample" , labels=c( "Not Holiday", "Holiday" ) ) +
+  scale_x_discrete( "Sample" , labels=c( "Not Holiday", "Holiday" )  ) +
+  theme( legend.position = "bottom" )
+## arranging the plots next to each other
+grid.arrange( plottingDensity , boxPlotDensity , nrow = 1 )
+```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/visualizingTheSamplesCollected-1.png" title="" alt="" width="800px" />
+
+```r
+## removing plots from memory
+rm( xVar , colorVar , sampleDensityDf , plottingDensity , 
+    boxPlotDensity, Hyp_Holiday , Hyp_NotHoliday)
+```
+
+### 4.1.4 Calculating the Test Statistic
+
+```r
+## Calculating the Difference
+Diff_Log_Weekly_Sales = Holiday_Sample - NotHoliday_Sample
+## Printing Top 5 values of diff
+head(Diff_Log_Weekly_Sales)
+```
+
+```
+## [1]  0.14779642  2.38132920 -0.02916917 -5.96007556  0.50586191  5.58925841
+```
+
+```r
+## Calculating the Test Statistic
+xBar <- mean(Diff_Log_Weekly_Sales)
+xBar
+```
+
+```
+## [1] 0.1026465
+```
+
+```r
+## Calculating the Test Statistic
+zScore <- xBar / standardError(Diff_Log_Weekly_Sales)
+zScore
+```
+
+```
+## [1] 1.759381
+```
+
+```r
+## Calculating p-value
+## 1-pnorm() because we are doing a one-sided test - greater than
+pValue <- 1-pnorm( zScore ) 
+pValue
+```
+
+```
+## [1] 0.03925638
+```
+
+```r
+## removing variables not needed anymore
+rm( pValue , zScore , xBar , Diff_Log_Weekly_Sales , Holiday_Sample , NotHoliday_Sample , ndiff )
+```
+
+### 4.1.5 Decision: Alternate Hypothesis (H~A~) is Rejected
+The **Null Hypothesis (H~0~)** is NOT rejected because the <code>pValue</code> is greater than the significance value of <code>0.05</code>.
+
+This imples that the Alternate Hypothesis (H~A~) is rejected. Holiday weeks do not cause sales to spike up.
+
+### 4.1.6 Real World Application
+However, in graphs drawn in section 3.3.3 we were presented with another reality. We saw the spike in sales during holiday season - Thanksgiving and Christmas. One will recognize on close examination of the graphs that most of the sales spike happened 1 week before the holiday week. Sales during the holiday week was mostly on the decline from the high sales peak from the week before.
+
+Therefore, statistically, Holiday Week Sales are not very different from that of non-holiday week sales. However, if we consider Holiday Season sales, it may tell a different story. This will form the basis of our next Hypothesis test - on average do Thanksgiving and Christmas contribute to spike in sales?
+
+## 4.2 On Average, Do Thanksgiving and Christmas Contribute to Sales Spikes?
+As stated in the previous section, we would like to verify the behavior of sales spiking up during Holiday seasons, rather than just the holidays themselves. As we noted in the previous section, the holiday week itself may be no different from the rest of the dataset, but the holiday season could be interesting to study.
+
+For the purposes of our study we will take 2 weeks before and after as a part of the holiday season. We will consider only Thanksgiving & Christmas - from the graph in Section 3.3.3 the other holidays don't influence the sales as much.
+
+### 4.2.1 The Hypotheses
+Let us state our Hypotheses:
+
+* <B>Null Hypothesis (H~0~)</B> : On average, there is no difference in weekly sales figures during holiday seasons. In other words, there is no statisically significant difference between  <code>Weekly_Sales</code> numbers between holiday season and non-holiday seasons.
+* <B>Alternate Hypothesis (H~A~)</B>: Our alternate hypothesis is that there is a statistically significant higher sales figure during holiday season (one-sided test)
+
+Mathematically, the hypothese are expressed below:
+
+* H~0~: μ~diff~ = 0
+* H~A~: μ~diff~ > 0
+
+### 4.2.2 The Data
+We need to separate the datasets into Holiday and Non-holiday seasons and then calculate the point estimate.
+
+
+```r
+## Creating the datasets for Holiday and NotHoliday
+Hyp_NotHoliday <- subset( trainStoresFeaturesMerge , 
+                          HolidaySeasonId != 11 & HolidaySeasonId != 12  );
+Hyp_Holiday <- subset( trainStoresFeaturesMerge , 
+                       HolidaySeasonId == 11 | HolidaySeasonId == 12);
+
+## Getting the Number of rows in each dataset
+nrow( Hyp_NotHoliday )
+```
+
+```
+## [1] 361087
+```
+
+```r
+nrow( Hyp_Holiday )
+```
+
+```
+## [1] 59125
+```
+
+### 4.2.3 Central Limit Theorm: Checking the Conditions for Hypothesis Testing for Paired Data
+The conditions for hypothesis testing:
+
+* <B>Independence:</B> Sampled observations must be independent. Random sample must be collected and if it is without replacement then the sample size must be less than 10% of the Population
+* <B>Sample Size / Skew: </B> The no of elements must be more than 30.
+
+We select a size of <code>5000</code> which is less than 10% of <code>Hyp_Holiday</code>.
+
+
+```r
+## Number of sample elements to collect from population 
+## should be <10% of holiday Week Population
+ndiff <- 5000
+## Seeding to ensure the randomness can be repeated
+set.seed(1101)
+## Getting a sample of elements (ndiff) (<10% of Holiday Weeks)
+Holiday_Sample <- sample( Hyp_Holiday$Log_Weekly_Sales , ndiff )
+head(Holiday_Sample)
+```
+
+```
+## [1]  1.867176  8.834257  9.530136  2.867899  8.672733 10.266261
+```
+
+```r
+NotHoliday_Sample <- sample( Hyp_NotHoliday$Log_Weekly_Sales , ndiff )
+head(NotHoliday_Sample)
+```
+
+```
+## [1] 9.257705 8.989010 3.573749 8.226298 4.366278 7.299074
+```
+
+
+```r
+## combining both the sample into one x-Axis Variable
+xVar <- c(NotHoliday_Sample , Holiday_Sample )
+## Creating the color Variable
+colorVar <- as.factor(c(rep(1, ndiff), rep(2, ndiff ) ) )
+## creating the dataframe
+sampleDensityDf <- data.frame( xVar ,  colorVar )
+## the density plot showing the 
+## Not Holiday and Holiday values of Log(Weekly_Sales)
+plottingDensity <- ggplot( sampleDensityDf , aes(x = xVar, fill = colorVar) ) + 
+  geom_density( alpha = .2 ) +
+  scale_x_continuous( "log(Weekly_Sales)" ) +
+  scale_fill_discrete( 
+    name = "Sample" , labels=c( "Not Holiday", "Holiday Season" ) ) +
+  scale_y_continuous( "Density" ) +
+  theme( legend.position = "bottom" )
+## box plot to show the Density Distribution
+boxPlotDensity <- ggplot( sampleDensityDf , aes( colorVar , xVar ) ) + 
+  geom_boxplot( aes( fill = colorVar ) ) + 
+  scale_y_continuous( "log(Weekly_Sales)" ) +
+  scale_fill_discrete( 
+    name = "Sample" , labels=c( "Not Holiday", "Holiday" ) ) +
+  scale_x_discrete( "Sample" , labels=c( "Not Holiday", "Holiday" ) ) +
+  theme( legend.position = "bottom" )
+## arranging the plots next to each other
+grid.arrange( plottingDensity , boxPlotDensity , nrow = 1 )
+```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/visualizingTheSamplesCollected2-1.png" title="" alt="" width="800px" />
+
+```r
+## removing plots from memory
+rm( xVar , colorVar , sampleDensityDf , plottingDensity , 
+    boxPlotDensity, Hyp_Holiday , Hyp_NotHoliday)
+```
+
+### 4.2.4 Calculating the Test Statistic
+
+```r
+## Calculating the Difference
+Diff_Log_Weekly_Sales = Holiday_Sample - NotHoliday_Sample
+## Printing Top 5 values of diff
+head(Diff_Log_Weekly_Sales)
+```
+
+```
+## [1] -7.3905286 -0.1547533  5.9563873 -5.3583991  4.3064543  2.9671864
+```
+
+```r
+## Calculating the Test Statistic
+xBar <- mean(Diff_Log_Weekly_Sales)
+xBar
+```
+
+```
+## [1] 0.1004113
+```
+
+```r
+## Calculating the Test Statistic
+zScore <- xBar / standardError(Diff_Log_Weekly_Sales)
+zScore
+```
+
+```
+## [1] 2.519857
+```
+
+```r
+## Calculating p-value
+## 1-pnorm() because we are doing a one-sided test - greater than
+pValue <- 1-pnorm( zScore ) 
+pValue
+```
+
+```
+## [1] 0.005870118
+```
+
+```r
+## removing variables not needed anymore
+rm( pValue , zScore , xBar , Diff_Log_Weekly_Sales , Holiday_Sample , NotHoliday_Sample , ndiff )
+```
+
+### 4.2.5 Decision: Null Hypothesis (H~0~) is Rejected
+The **Null Hypothesis (H~0~)** is rejected because the <code>pValue</code> is much smaller than the significance value of <code>0.05</code>.
+
+This imples that the Alternate Hypothesis (H~A~) is NOT rejected. Holiday seasons do cause a spike in sales.
+
+### 4.2.6 Real World Application
+This confirms the what we visually depicted in Section 3.3.3 regarding sales spiking up during Christmas and Thanksgiving.
+
+## 4.3 Do Bigger Stores contribute to Higher Sales Figures?
 
 # 5. Stage 3: Linear Regression: Predicting Weekly_Sales
+
+# Diagnostic ------- REMOVE LATER
+
+```r
+nrow(train)
+```
+
+```
+## [1] 420212
+```
+
+```r
+nrow(trainStoresFeaturesMerge)
+```
+
+```
+## [1] 420212
+```
+
+```r
+ls()
+```
+
+```
+##  [1] "features"                  "holidayDateTableDataFrame"
+##  [3] "lagpad"                    "standardError"            
+##  [5] "stores"                    "test"                     
+##  [7] "testStoresFeaturesMerge"   "train"                    
+##  [9] "trainStoresFeaturesMerge"  "weekNumber"
+```

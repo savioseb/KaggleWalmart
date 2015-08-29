@@ -3,6 +3,12 @@ library(ggplot2)
 library(reshape2)
 library(scales)
 library(lubridate)
+library(e1071)
+## to be able to plot in grids
+library(grid)
+## to be able to plot in grids
+library(gridExtra)
+
 options(scipen=10000)
 
 ## Loading the datasets
@@ -217,6 +223,13 @@ holidayDateTableDataFrame$Week2BeforeHoliday <- lagpad(holidayDateTableDataFrame
 holidayDateTableDataFrame$Week1AfterHoliday <- lagpad(holidayDateTableDataFrame$IsHolidayDefined , 1)
 holidayDateTableDataFrame$Week2AfterHoliday <- lagpad(holidayDateTableDataFrame$IsHolidayDefined , 2)
 
+holidayDateTableDataFrame$HolidaySeasonId <- as.factor(
+  holidayDateTableDataFrame$Week1BeforeHoliday + 
+  holidayDateTableDataFrame$Week2BeforeHoliday +
+  holidayDateTableDataFrame$IsHolidayDefined +
+  holidayDateTableDataFrame$Week1AfterHoliday +
+  holidayDateTableDataFrame$Week2AfterHoliday )
+
 
 ## Creating an ordered Holiday Season Type for Super Bowl
 holidayDateTableDataFrame$HolidaySeasonType <- 
@@ -281,16 +294,34 @@ holidayDateTableDataFrame$HolidaySeasonType = factor(
 
 ## Mering the sales per week and holiday list 
 totalSalesPerWeekDataFrame$HolidaySeasonType <- holidayDateTableDataFrame$HolidaySeasonType
+## Merging the season Type with sales per week
+totalSalesPerWeekDataFrame$HolidaySeasonId <- 
+  holidayDateTableDataFrame$HolidaySeasonId
 
 ## Subsetting only the holidays
 totalSalesPerWeekDataFrameDuringHolidays <- 
   subset( totalSalesPerWeekDataFrame , 
           totalSalesPerWeekDataFrame$Date >= '2010-08-27' & 
             totalSalesPerWeekDataFrame$Date <= '2011-02-25' )
-ggplot( totalSalesPerWeekDataFrameDuringHolidays , aes(x=Date , y=TotalSalesInMillion , color = HolidaySeasonType ) ) + 
-  geom_line( aes(group=1) , size=1) + 
-  geom_point(size = 3) +
-  scale_y_continuous(name="Total Sales in Millions" )
+
+## Plotting the subset of totalSalesPerWeekDataFrame
+ggplot( totalSalesPerWeekDataFrameDuringHolidays , 
+        aes(x=Date , y=TotalSalesInMillion , 
+            color = HolidaySeasonId ) ) + 
+  geom_line( aes(group=1) ) + 
+  geom_point(size = 2) +
+  scale_y_continuous(name="Total Sales in Millions" )  +
+  scale_color_brewer(
+    palette="Dark2" , 
+    name = "Holiday Season" ,
+    labels = c( 
+      "No Holiday" , 
+      "Super Bowl" ,
+      "Labor Day" , 
+      "Thanksgiving" ,
+      "Christmas"
+      )
+    ) 
 
 ## removing the following columns because it may cause 
 ## multi-collinearity issues once merged with the main data and
@@ -302,6 +333,7 @@ holidayDateTableDataFrame$Week2AfterHoliday = NULL
 holidayDateTableDataFrame$IsHoliday = NULL
 holidayDateTableDataFrame$IsHolidayDefined = NULL
 
+rm( totalSalesPerWeekDataFrame , totalSalesPerWeekDataFrameDuringHolidays , trainStoresMerge )
 
 
 #################################################################
@@ -312,33 +344,164 @@ ggplot(trainStoresFeaturesMerge ,
   geom_point() +
   scale_y_continuous(name="Weekly Sales" )
 
-qplot(Weekly_Sales , 
-      data = trainStoresFeaturesMerge , 
-      geom = "histogram" , 
-      binwidth = 2500 ) +
+ggplot( train, aes( x = Weekly_Sales ) ) +
+  geom_histogram(binwidth=5000 ) + 
+  ## Vertical line indicating the mean value
+  geom_vline( aes( xintercept = mean( Weekly_Sales ) ), color="red" ) +
   scale_y_continuous( "Frequency of Occurance" ) +
   scale_x_continuous( "Weekly Sales" )
 
-train$LogOfWeekly_Sales <- log(train$Weekly_Sales)
-
-summary(train$LogOfWeekly_Sales)
-trainLogNAN <- subset(train , is.na(train$LogOfWeekly_Sales) == T )
-trainNotNAN <- subset(train , is.na(train$LogOfWeekly_Sales) == F )
-trainLogInf <- subset(train , is.infinite(train$LogOfWeekly_Sales) == T )
 train0 <- subset( train, train$Weekly_Sales <= 0 )
 
 
-trainNotNANMore <- subset(trainNotNAN, trainNotNAN$LogOfWeekly_Sales > 0)
+paste0( round( nrow(train0)/nrow( train )*100 , 1) , "%" )
 
-qplot( log(Weekly_Sales) , 
-      data = trainStoresFeaturesMerge , 
-      geom = "histogram" ) +
+abs( min( train0$Weekly_Sales ) )
+
+## Create subset of train data set
+train <- subset( train , train$Weekly_Sales > 0 )
+## Make Log Transformation for Weekly_Sales
+train$Log_Weekly_Sales <- log(train$Weekly_Sales)
+## remove train0
+rm( train0 )
+
+
+## Merging the datasets
+trainStoresMerge <- merge(train , stores , by = "Store")
+trainStoresFeaturesMerge <- merge( trainStoresMerge , features , by = c( "Store" , "Date" ) )
+colnames(trainStoresFeaturesMerge)[5] <- "IsHoliday"
+trainStoresFeaturesMerge$IsHoliday.y <- NULL
+testStoresMerge <- merge(test , stores , by = "Store")
+testStoresFeaturesMerge <- merge( testStoresMerge , features , by = c( "Store" , "Date" ) )
+colnames(testStoresFeaturesMerge)[5] <- "IsHoliday"
+testStoresFeaturesMerge$IsHoliday.y <- NULL
+
+
+
+
+
+summary(train$Weekly_Sales)
+summary( train$Log_Weekly_Sales )
+
+
+## plotting the log( Weekly_Sales ) histogram
+ggplot( train, aes( x = Log_Weekly_Sales ) ) +
+  geom_histogram(binwidth=.2 ) + 
+  ## Vertical line indicating the mean value
+  geom_vline( aes( xintercept = mean( Log_Weekly_Sales ) ), color="red" ) +
   scale_y_continuous( "Frequency of Occurance" ) +
   scale_x_continuous( "Weekly Sales" )
 
-ggplot(data=trainStoresFeaturesMerge, 
-       aes(x=Type, y=Weekly_Sales, fill=Type) ) + 
-  geom_boxplot()
+
+
+
+
+
+## Function to calculate the Standard Error
+## x: the vector of numerical values
+## returns the standard error of the vector
+standardError <- function( x ) {
+  sd( x )/sqrt( length( x ) )
+}
+
+
+## Calculating Detailed Summary Statistics for Weekly_Sales
+Weekly_Sales <- c( 
+  mean( train$Weekly_Sales ) ,
+  standardError(  train$Weekly_Sales ) ,
+  median( train$Weekly_Sales) ,
+  sd( train$Weekly_Sales ) ,
+  var( train$Weekly_Sales ) , 
+  kurtosis( train$Weekly_Sales ) ,
+  skewness( train$Weekly_Sales ) ,
+  range( train$Weekly_Sales )[2]-range( train$Weekly_Sales )[1] ,
+  min( train$Weekly_Sales ) ,
+  max( train$Weekly_Sales ) ,
+  sum( train$Weekly_Sales ),
+  length( train$Weekly_Sales ) 
+)
+
+## Calculating Detailed Summary Statistics for Weekly_Sales
+Log_Weekly_Sales <- c( 
+  mean( train$Log_Weekly_Sales , na.rm = T ) ,
+  standardError(  train$Log_Weekly_Sales ) ,
+  median( train$Log_Weekly_Sales) ,
+  sd( train$Log_Weekly_Sales ) ,
+  var( train$Log_Weekly_Sales ) , 
+  kurtosis( train$Log_Weekly_Sales ) ,
+  skewness( train$Log_Weekly_Sales ) ,
+  range( train$Log_Weekly_Sales )[2]-range( train$Log_Weekly_Sales )[1] ,
+  min( train$Log_Weekly_Sales ) ,
+  max( train$Log_Weekly_Sales ) ,
+  sum( train$Log_Weekly_Sales ),
+  length( train$Log_Weekly_Sales ) 
+)
+
+Description <- c(
+  "Mean",
+  "Standard Error" ,
+  "Median" , 
+  "Standard Deviation" ,
+  "Variance" , 
+  "Kurtosis" ,
+  "Skewness" ,
+  "Range" ,
+  "Min" ,
+  "Max" ,
+  "Sum" ,
+  "Count" 
+)
+
+Weekly_Sales
+Description
+
+Detailed_Summary_Statistics_on_Weekly_Sales <- 
+  data.frame( 
+    Description=Description , 
+    Weekly_Sales = Weekly_Sales ,
+    Log_Weekly_Sales = Log_Weekly_Sales
+    )
+## printing out the detailed summary statistics 
+print( Detailed_Summary_Statistics_on_Weekly_Sales , row.names = F )
+
+rm( 
+  Description, 
+  Log_Weekly_Sales , 
+  Weekly_Sales , 
+  Detailed_Summary_Statistics_on_Weekly_Sales
+  )
+
+
+############# Stores Dataset
+summary(stores$Size)
+
+## plotting the Size histogram
+ggplot( stores , aes( x = Size ) ) +
+  geom_histogram(binwidth=2000 ) + 
+  ## Vertical line indicating the mean value
+  geom_vline( aes( xintercept = mean( Size ) ), color="red" ) +
+  scale_y_continuous( "Frequency of Occurance" ) +
+  scale_x_continuous( "Store Size" )
+
+
+## box plot to show the summary statistics of the Type of Stores and their sizes
+ggplot(data=stores, 
+       aes(x=Type, y=Size, fill=Type) ) + 
+  geom_boxplot(outlier.shape = 15, outlier.size = 4) +
+  ## to show how the individual store sizes are distributed
+  geom_jitter() +
+  scale_y_continuous( name="Store Size" ) + 
+  scale_fill_brewer( name = "Store Type" , palette = "Dark2")
+
+## Standard Deviation of each type of Store
+tapply( stores$Size , stores$Type , sd )
+## Median of each Type of Store
+tapply( stores$Size , stores$Type , median )
+## Mean of each type of Store
+tapply( stores$Size , stores$Type , mean )
+
+
+
 
 
 
@@ -346,16 +509,176 @@ ggplot(data=trainStoresFeaturesMerge,
 ## date - the date for which the Week Number should be calculated
 ## returns week Number
 weekNumber <- function( date ) {
-  d1 <- as.Date( paste0( year(d2) , "-01-01" ) )
+  d1 <- as.Date( paste0( year(date) , "-01-01" ) )
   as.integer((date-d1)/7)+1
 }
+
+## Adding the Week Number to the holidayDateTableDataFrame
+holidayDateTableDataFrame$WeekNumber <- weekNumber( holidayDateTableDataFrame$Date )
+## Adding Month to holidayDateTableDataFrame
+holidayDateTableDataFrame$Month <- month( holidayDateTableDataFrame$Date )
+
+
+## Merging holidayDateTableDataFrame with trainStoresFeaturesMerge
+trainStoresFeaturesMerge <- merge( trainStoresFeaturesMerge , holidayDateTableDataFrame , by = "Date" )
+
+summary(trainStoresFeaturesMerge)
+
+
+
+
+
+
+
+####################################################################
+## Hypothesis development
+####################################################################
+## Extracting observations where IsHoliday = False
+Hyp_NotHoliday <- subset( trainStoresFeaturesMerge , IsHoliday == FALSE );
+Hyp_Holiday <- subset( trainStoresFeaturesMerge , IsHoliday == TRUE );
+
+## Number of sample elements to collect from population 
+## should be <10% of holiday Week Population
+ndiff <- 2500
+## Seeding to ensure the randomness can be repeated
+set.seed(1101)
+## Getting a sample elements (ndiff) (<10% of Holiday Weeks)
+Holiday_Sample <- sample( Hyp_Holiday$Log_Weekly_Sales , ndiff )
+NotHoliday_Sample <- sample( Hyp_NotHoliday$Log_Weekly_Sales , ndiff )
+
+
+## combining both the sample into one x-Axis Variable
+xVar <- c(NotHoliday_Sample , Holiday_Sample )
+## Creating the color Variable
+colorVar <- as.factor(c(rep(1, ndiff), rep(2, ndiff ) ) )
+## creating the dataframe
+sampleDensityDf <- data.frame( xVar ,  colorVar )
+## the density plot showing the 
+## Not Holiday and Holiday values of Log(Weekly_Sales)
+plottingDensity <- ggplot( sampleDensityDf , aes(x = xVar, fill = colorVar) ) + 
+  geom_density( alpha = .2 ) +
+  scale_x_continuous( "log(Weekly_Sales)" ) +
+  scale_fill_discrete( 
+    name = "Sample" , labels=c( "Not Holiday", "Holiday" ) ) +
+  scale_y_continuous( "Density" ) +
+  theme( legend.position = "bottom" )
+## box plot to show the Density Distribution
+boxPlotDensity <- ggplot( sampleDensityDf , aes( colorVar , xVar ) ) + 
+  geom_boxplot( aes( fill = colorVar ) ) + 
+  scale_y_continuous( "log(Weekly_Sales)" ) +
+  scale_fill_discrete( 
+    name = "Sample" , labels=c( "Not Holiday", "Holiday" ) ) +
+  scale_x_discrete( "Sample" ) +
+  theme( legend.position = "bottom" )
+## arranging the plots next to each other
+grid.arrange( plottingDensity , boxPlotDensity , nrow = 1 )
+## removing plots from memory
+rm( xVar , colorVar , sampleDensityDf , plottingDensity , boxPlotDensity, Hyp_Holiday , Hyp_NotHoliday)
+
+
+## Calculating the Difference
+Diff_Log_Weekly_Sales = Holiday_Sample - NotHoliday_Sample
+## Printing Top 5 values of diff
+head(Diff_Log_Weekly_Sales)
+## Calculating the Test Statistic
+xBar <- mean(Diff_Log_Weekly_Sales)
+xBar
+## Calculating the Test Statistic
+zScore <- xBar / standardError(Diff_Log_Weekly_Sales)
+zScore
+## Calculating p-value
+pValue <- 1-pnorm( zScore )
+pValue
+## removing variables not needed anymore
+rm( pValue , zScore , xBar , Diff_Log_Weekly_Sales , Holiday_Sample , NotHoliday_Sample , ndiff )
+
+
+
+#########################################################################
+#######################
+## ThanksGiving & Christmas Season Hypothesis Testing
+##############################################################
+
+
+Hyp_NotHoliday <- subset( trainStoresFeaturesMerge , 
+                          HolidaySeasonId != 11 & HolidaySeasonId != 12  );
+Hyp_Holiday <- subset( trainStoresFeaturesMerge , 
+                       HolidaySeasonId == 11 | HolidaySeasonId == 12);
+
+## Getting the Number of rows in each dataset
+nrow( Hyp_NotHoliday )
+nrow( Hyp_Holiday )
+
+
+## Number of sample elements to collect from population 
+## should be <10% of holiday Week Population
+ndiff <- 5000
+## Seeding to ensure the randomness can be repeated
+set.seed(1101)
+## Getting a sample of elements (ndiff) (<10% of Holiday Weeks)
+Holiday_Sample <- sample( Hyp_Holiday$Log_Weekly_Sales , ndiff )
+head(Holiday_Sample)
+NotHoliday_Sample <- sample( Hyp_NotHoliday$Log_Weekly_Sales , ndiff )
+head(NotHoliday_Sample)
+
+
+## combining both the sample into one x-Axis Variable
+xVar <- c(NotHoliday_Sample , Holiday_Sample )
+## Creating the color Variable
+colorVar <- as.factor(c(rep(1, ndiff), rep(2, ndiff ) ) )
+## creating the dataframe
+sampleDensityDf <- data.frame( xVar ,  colorVar )
+## the density plot showing the 
+## Not Holiday and Holiday values of Log(Weekly_Sales)
+plottingDensity <- ggplot( sampleDensityDf , aes(x = xVar, fill = colorVar) ) + 
+  geom_density( alpha = .2 ) +
+  scale_x_continuous( "log(Weekly_Sales)" ) +
+  scale_fill_discrete( 
+    name = "Sample" , labels=c( "Not Holiday", "Holiday" ) ) +
+  scale_y_continuous( "Density" ) +
+  theme( legend.position = "bottom" )
+## box plot to show the Density Distribution
+boxPlotDensity <- ggplot( sampleDensityDf , aes( colorVar , xVar ) ) + 
+  geom_boxplot( aes( fill = colorVar ) ) + 
+  scale_y_continuous( "log(Weekly_Sales)" ) +
+  scale_fill_discrete( 
+    name = "Sample" , labels=c( "Not Holiday", "Holiday" ) ) +
+  scale_x_discrete( "Sample"  , labels=c( "Not Holiday", "Holiday" ) ) +
+  theme( legend.position = "bottom" )
+## arranging the plots next to each other
+grid.arrange( plottingDensity , boxPlotDensity , nrow = 1 )
+## removing plots from memory
+rm( xVar , colorVar , sampleDensityDf , plottingDensity , 
+    boxPlotDensity, Hyp_Holiday , Hyp_NotHoliday)
+
+
+
+
+## Calculating the Difference
+Diff_Log_Weekly_Sales = Holiday_Sample - NotHoliday_Sample
+## Printing Top 5 values of diff
+head(Diff_Log_Weekly_Sales)
+## Calculating the Test Statistic
+xBar <- mean(Diff_Log_Weekly_Sales)
+xBar
+## Calculating the Test Statistic
+zScore <- xBar / standardError(Diff_Log_Weekly_Sales)
+zScore
+## Calculating p-value
+## 1-pnorm() because we are doing a one-sided test - greater than
+pValue <- 1-pnorm( zScore ) 
+pValue
+
+## removing variables not needed anymore
+rm( pValue , zScore , xBar , Diff_Log_Weekly_Sales , Holiday_Sample , NotHoliday_Sample , ndiff )
+
 
 
 
 
 # Model Building
-modelNot <- lm( Weekly_Sales ~ . -LogOfWeekly_Sales , data = trainNotNANMore )
-modelLog <- lm( LogOfWeekly_Sales ~ . -Weekly_Sales , data = trainNotNANMore )
+modelNot <- lm( Weekly_Sales ~ . -Log_Weekly_Sales , data = trainNotNANMore )
+modelLog <- lm( Log_Weekly_Sales ~ . -Weekly_Sales , data = trainNotNANMore )
 summary(trainNotNANMore)
 
 
