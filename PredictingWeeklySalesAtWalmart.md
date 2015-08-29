@@ -5,34 +5,76 @@ August 31, 2015
 
 
 
-<BR>
 
-# 1. Executive Summary
+\pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+
+# Executive Summary
 Retail stores need to be able to predict sales forecasts for the future and study the effect how strategic offers affect sales, especially during holiday season. Since the number of days in holidays are limited, it becomes more challenging to be able to accurately predict how different aspects affect sales.
 
 This report will focus on a Walmart Data set that has Department-wise Weekly Sales of 45 Walmart stores. It will attempt to create a predictive model and also discuss the extent to which different factors affect the sales.
 
+\pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
 
-# 2. Introduction
+# Introduction
 
 
-## 2.1 About the Solution Environment
+## About the Solution Environment
 The authors implemented this solution in R. We have used R Markdown Report to create this document. First we explore and prepare the data set before carrying out formal statistical inferences on the data set. We wrap the report by building a model to predict Weekly sales of the departments belonging to the 45 stores in this data set.
 
 
-## 2.2 About the Data
+## About the Data
 The data set under consideration is taken from a recruitment competition Walmart ran on Kaggle between February-May 2014. Each store has multiple departments and the end requirement is to be able to predict the sales for individual departments of each store.
 
 The training data set has more than 400K records. The testing data set has over 100K records.
 
 
-### 2.2.1 The Challenge
+### The Challenge
 The challenge is to be able to predict how different holiday price markdowns affect the various departments in the store, to model extent of impact of these markdowns.
 
 <IMAGE src="Images/markdowns.png" />
 
 
-## 2.3 Getting the Data
+## Getting the Data
 The data was download from Kaggle.
 
 URL to the Kaggle Competition Site: https://www.kaggle.com/c/walmart-recruiting-store-sales-forecasting
@@ -40,13 +82,10 @@ URL to the Kaggle Competition Site: https://www.kaggle.com/c/walmart-recruiting-
 The files available are the following:<BR>
 <IMAGE src="Images/DataFilesImage.png" />
 
-### 2.3.1 The Data Files
+### The Data Files
 Here we discuss the various CSV Files that are given by Walmart.
 
-#### 2.3.1.1 stores.csv
-Contains size and type of 45 stores (45 records).
-
-#### 2.3.1.2 train.csv
+#### train.csv
 Weekly sales data set from February 05, 2010 to November 11, 2012. It contains the following fields:
 
 * Store: store number
@@ -55,10 +94,16 @@ Weekly sales data set from February 05, 2010 to November 11, 2012. It contains t
 * Weekly_Sales: sales for the given department in the given store
 * IsHoliday: whether the week is a special holiday week
 
-#### 2.3.1.3 test.csv
+
+#### stores.csv
+Contains size and type of 45 stores (45 records).
+
+It contains annonymized data of the store, it's size and type.
+
+#### test.csv
 The data set with similar fields as train.csv, except without Weekly_Sales. This will be used to test the model with unseen data and can be evaluated by uploading the data set to Kaggle.
 
-#### 2.3.1.4 features.csv
+#### features.csv
 This data file contains additional relevant information relating to the physical and business environment around the store. The fields are as follows:
 
 * Store: store number
@@ -77,30 +122,30 @@ The four holidays fall in the following weeks in the data set:
 * Thanksgiving: 26-Nov-10, 25-Nov-11, 23-Nov-12, 29-Nov-13
 * Christmas: 31-Dec-10, 30-Dec-11, 28-Dec-12, 27-Dec-13
 
-### 2.3.2 Ingesting the Data
+### Ingesting the Data
 
 ```r
-## Ingesting the data from the Data folder: Training Dataset
+# Ingesting the data from the Data folder: Training Dataset
 train <- read.csv("Data/train.csv")
 ```
 
 ```r
-## Ingesting the data from the Data folder: Stores Dataset
+# Ingesting the data from the Data folder: Stores Dataset
 stores <- read.csv("Data/stores.csv")
 ```
 
 ```r
-## Ingesting the data from the Data folder: features Dataset
+# Ingesting the data from the Data folder: features Dataset
 features <- read.csv("Data/features.csv")
 ```
 
 
 ```r
-## Ingesting the data from the Data folder: testing Dataset
+# Ingesting the data from the Data folder: testing Dataset
 test <- read.csv("Data/test.csv")
 ```
 
-## 2.4 R Libraries Used
+## R Libraries Used
 The following libraries are used in this report:
 
 
@@ -115,25 +160,41 @@ library(scales)
 library(lubridate)
 # to calculate Kurtosis
 library(e1071)
-## to be able to plot in grids
+# to be able to plot in grids
 library(grid)
-## to be able to plot in grids
+# to be able to plot in grids
 library(gridExtra)
 ```
 
 
-<BR>
+\pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
 
-# 3. Stage 1: Data Exploration and Preparation
+# Stage 1: Data Exploration and Preparation
 
-## 3.1 Summary Statististics
+## Summary Statististics
 
-### 3.1.1 The Training Dataset (train)
-
-```r
-## Structure of Train Dataset
-str(train)
-```
+### The Training Dataset (train)
+This is the structure of the dataset
 
 ```
 ## 'data.frame':	421570 obs. of  5 variables:
@@ -146,15 +207,10 @@ str(train)
 
 <BR>
 
-<code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 143 dates in total.
+There are 143 dates in total.
 
 
-```r
-## Changing the Date from "Format" type to "Date" Type 
-train$Date <- as.Date(train$Date)
-## Getting the summary of the Data
-summary(train)
-```
+
 
 ```
 ##      Store           Dept            Date             Weekly_Sales   
@@ -183,30 +239,18 @@ The starting date for training data set is ``2010-02-05``. It starts on a ``Frid
 
 
 
-#### 3.1.1.1 Heavily Right-Skewed Weekly Sales
+#### Heavily Right-Skewed Weekly Sales
 It is interesting to note that for some departments the <code>Weekly_Sales</code> are **negative**. Returns and special offers cause these negative sales figures.
 
 The **Standard Deviation** for <code>Weekly_Sales</code> is ``22711.18``. The **mean** is ``15981.26`` and **median** is ``7612.03``. The mean and the median are very far apart, indicating that the data is skewed - in this case, extremely **right-skewed**. The following histogram depicts this relationship - where you can clearly observe the long tail towards the right making it extremely right-skewed.
 
 
-
-```r
-## plotting Weekly_Sales with binwidth of 5000. 
-## Mean and median are far from each other
-ggplot( train, aes( x = Weekly_Sales ) ) +
-  geom_histogram(binwidth=5000 ) + 
-  ## Vertical line indicating the mean value
-  geom_vline( aes( xintercept = mean( Weekly_Sales ) ), color="red" ) +
-  scale_y_continuous( "Frequency of Occurance" ) +
-  scale_x_continuous( "Weekly Sales" )
-```
-
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/weeklySalesSkew-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/weeklySalesSkew-1.png" title="" alt="" width="300px" />
 
 
 Since the data is highle skewed, it would be more appropriate use log transformation to remove the skew to make make the data fit the assumptions of inferential statistics. But before we do that, we need to take care of Negative and Zero Values in the data.
 
-#### 3.1.1.2 Dealing with Negative and 0 Weekly_Sales
+#### Dealing with Negative and Zero Weekly Sales
 Since Log transformation of negative numbers yeild <code>NA</code> and log transformation of 0 is a negative infinity value, we need to handle these values appropriately.
 
 Let us first find the total count of numbers that fit this description:
@@ -241,7 +285,7 @@ Owing to the reasons mentioned above, it would be good to remove these observati
 
 
 
-#### 3.1.1.3 Log Transformation of Weekly Sales
+#### Log Transformation of Weekly Sales
 
 
 ```r
@@ -289,12 +333,12 @@ ggplot( train, aes( x = Log_Weekly_Sales ) ) +
   scale_x_continuous( "log( Weekly_Sales )" )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/logWeeklySalesHistogram-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/logWeeklySalesHistogram-1.png" title="" alt="" width="300px" />
 
 The histogram is slightly **left-skewed**, but more normal than the previous distribution of <code>Weekly_Sales</code>.
 
 
-#### 3.1.1.4 Detailed Summary Statistics of Weekly Sales
+#### Detailed Summary Statistics of Weekly Sales
 
 ```r
 ## Function to calculate the Standard Error
@@ -403,7 +447,7 @@ rm(
 The **Kurtosis** value of <code>Log_Weekly_Sales</code> indicates that it is peaked - unimodal data.
 
 
-### 3.1.2 The Stores Dataset (stores)
+### The Stores Dataset (stores)
 
 ```r
 ## Structure of Stores Dataset
@@ -449,7 +493,7 @@ ggplot(data=stores,
   scale_fill_brewer( name = "Store Type" , palette = "Dark2")
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeSizeBoxPlot-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeSizeBoxPlot-1.png" title="" alt="" width="300px" />
 
 
 ```r
@@ -483,7 +527,7 @@ tapply( stores$Size , stores$Type , mean )
 ```
 
 
-### 3.1.3 The Features Dataset (features)
+### The Features Dataset (features)
 
 
 ```r
@@ -507,7 +551,7 @@ str(features)
 ##  $ IsHoliday   : logi  FALSE TRUE FALSE FALSE FALSE FALSE ...
 ```
 
-<code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 182 dates in total. This data set is relevant for both the <code>train</code> and the <code>test</code> data set.
+There are 182 dates in total. This data set is relevant for both the <code>train</code> and the <code>test</code> data set.
 
 
 ```r
@@ -546,7 +590,7 @@ summary(features)
 
 The <code>features</code> data set has missing variables for <code>Markdown1-5</code>, <code>CPI</code> & <code>Unemployment</code>. We will discuss how we can treat these missing values below
 
-#### 3.1.3.1 Handling Consumer Price Index Missing Values
+#### Handling Consumer Price Index Missing Values
 To undertstand how the missing values are distributed in the <code>features</code> dataset let us first plot a heat map.
 
 
@@ -577,7 +621,7 @@ avgCPiIndexTrend <- ggplot( meanCPIAcrossStoresDF , aes(x = Date, y = meanCPIAcr
 grid.arrange(missingCPIHeatMap , avgCPiIndexTrend , ncol = 1 )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/CPIMissingHeatMap-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/CPIMissingHeatMap-1.png" title="" alt="" width="300px" />
 
 The following features stand out:
 
@@ -638,7 +682,7 @@ newCPIHeatMap <- ggplot( features1 , aes(x = Date, y = Store)) +
 grid.arrange( missingCPIHeatMap , newCPIHeatMap , ncol = 1 )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingNewCPI-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingNewCPI-1.png" title="" alt="" width="300px" />
 
 
 
@@ -654,7 +698,7 @@ rm( CPI_DF , CPI_Max , CPI_Mean , CPI_Min ,
 
 
 
-### 3.1.4 The Test Dataset (test)
+### The Test Dataset (test)
 
 
 ```r
@@ -670,7 +714,7 @@ str(test)
 ##  $ IsHoliday: logi  FALSE FALSE FALSE TRUE FALSE FALSE ...
 ```
 
-<code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 39 dates in total.
+There are 39 dates in total.
 
 
 ```r
@@ -690,9 +734,10 @@ summary(test)
 ##  Max.   :45.00   Max.   :99.00   Max.   :2013-07-26
 ```
 
+\pagebreak
 
-## 3.2 Data Preparation - Merging the Datasets
-### 3.2.1 Merging Train and Stores Datasets
+## Data Preparation - Merging the Datasets
+### Merging Train and Stores Datasets
 Since the <code>Type</code> & <code>Size</code> variables may influence the Weekly Sales, we are merging the <code>train</code> & <stores</code> data sets. We merge the data by <code>Store</code>.
 
 
@@ -733,6 +778,7 @@ colnames(testStoresFeaturesMerge)[5] <- "IsHoliday"
 testStoresFeaturesMerge$IsHoliday.y <- NULL
 ```
 
+\pagebreak
 
 ## 3.3 Data Exploration
 
@@ -783,7 +829,10 @@ summary( storeDeptTotalSalesDataFrame)
 rm( storeDeptTotalSales )
 ```
 
-#### 3.3.1.1 Heatmap - Store & Department Total Sales
+#### 3.3.1.1 Heat Map - Store & Department Total Sales
+
+We generate a heat map to study this interaction
+
 
 ```r
 ## Generating a Heatmap of the Department's Total Sales in each of 45 stores
@@ -794,7 +843,7 @@ ggplot( storeDeptTotalSalesDataFrame , aes(x = Store, y = Dept)) +
   scale_y_continuous(name="Department")
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/heatmapStoreDept-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/heatmapStoreDept-1.png" title="" alt="" width="300px" />
 <BR>
 From the heat map we can draw the following broad conclusions:
 
@@ -855,7 +904,7 @@ boxplotStoreSize <- ggplot(data=stores,
 grid.arrange( scatterPlotStoreSize , boxplotStoreSize , nrow = 1 )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeTypeScatterBoxGrid-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeTypeScatterBoxGrid-1.png" title="" alt="" width="300px" />
 
 ```r
 ## removing the plots from memory
@@ -1041,7 +1090,7 @@ ggplot( totalSalesPerWeekDataFrame ,
   scale_color_brewer(palette="Dark2" , name = "Season Type")
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSalesPerWeek-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSalesPerWeek-1.png" title="" alt="" width="300px" />
 
 We can clearly see some trends here:
 
@@ -1240,7 +1289,7 @@ ggplot( totalSalesPerWeekDataFrameDuringHolidays ,
     ) 
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSubsetOfHolidays-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSubsetOfHolidays-1.png" title="" alt="" width="300px" />
 
 
 
@@ -1261,16 +1310,7 @@ rm( totalSalesPerWeekDataFrame , totalSalesPerWeekDataFrameDuringHolidays )
 ### 3.3.4 Store-Department-wise Sales per Week - Time Series
 To see a representation of the granularity of the data, we would like to plot all the data points of Weekly Sales vs Time (Week)
 
-
-```r
-## plotting all the Weekly Sales figures - colored by Dept
-ggplot(trainStoresFeaturesMerge , 
-       aes(x=Date , y = Weekly_Sales , color = Dept ) ) +
-  geom_point() +
-  scale_y_continuous(name="Weekly Sales" )
-```
-
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/allPoint-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/allPoint-1.png" title="" alt="" width="300px" />
 
 While it is not easy to make sense of a graph with more than 400 thousand data points, here are some salient features that stand out:
 
@@ -1309,7 +1349,7 @@ trainStoresFeaturesMerge <-
 rm( holidayDateTableDataFrame )
 ```
 
-
+\pagebreak
 
 # 4. Stage 2: Formal Statistical Inferences
 ## 4.1 On Average, Do Holiday Weeks Spike Sales Up?
@@ -1413,7 +1453,7 @@ boxPlotDensity <- ggplot( sampleDensityDf , aes( colorVar , xVar ) ) +
 grid.arrange( plottingDensity , boxPlotDensity , nrow = 1 )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/visualizingTheSamplesCollected-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/visualizingTheSamplesCollected-1.png" title="" alt="" width="300px" />
 
 ```r
 ## removing plots from memory
@@ -1467,7 +1507,8 @@ pValue
 
 ```r
 ## removing variables not needed anymore
-rm( pValue , zScore , xBar , Diff_Log_Weekly_Sales , Holiday_Sample , NotHoliday_Sample , ndiff )
+rm( pValue , zScore , xBar , Diff_Log_Weekly_Sales , Holiday_Sample , 
+    NotHoliday_Sample , ndiff )
 ```
 
 ### 4.1.5 Decision: Alternate Hypothesis (H~A~) is Rejected
@@ -1479,6 +1520,8 @@ This imples that the Alternate Hypothesis (H~A~) is rejected. Holiday weeks do n
 However, in graphs drawn in section 3.3.3 we were presented with another reality. We saw the spike in sales during holiday season - Thanksgiving and Christmas. One will recognize on close examination of the graphs that most of the sales spike happened 1 week before the holiday week. Sales during the holiday week was mostly on the decline from the high sales peak from the week before.
 
 Therefore, statistically, Holiday Week Sales are not very different from that of non-holiday week sales. However, if we consider Holiday Season sales, it may tell a different story. This will form the basis of our next Hypothesis test - on average do Thanksgiving and Christmas contribute to spike in sales?
+
+\pagebreak
 
 ## 4.2 On Average, Do Thanksgiving and Christmas Contribute to Sales Spikes?
 As stated in the previous section, we would like to verify the behavior of sales spiking up during Holiday seasons, rather than just the holidays themselves. As we noted in the previous section, the holiday week itself may be no different from the rest of the dataset, but the holiday season could be interesting to study.
@@ -1585,7 +1628,7 @@ boxPlotDensity <- ggplot( sampleDensityDf , aes( colorVar , xVar ) ) +
 grid.arrange( plottingDensity , boxPlotDensity , nrow = 1 )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/visualizingTheSamplesCollected2-1.png" title="" alt="" width="750px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/visualizingTheSamplesCollected2-1.png" title="" alt="" width="300px" />
 
 ```r
 ## removing plots from memory
@@ -1650,10 +1693,14 @@ This imples that the Alternate Hypothesis (H~A~) is NOT rejected. Holiday season
 ### 4.2.6 Real World Application
 This confirms the what we visually depicted in Section 3.3.3 regarding sales spiking up during Christmas and Thanksgiving.
 
+\pagebreak
+
 ## 4.3 Do Bigger Stores contribute to Higher Sales Figures?
 
+\pagebreak
 # 5. Stage 3: Linear Regression: Predicting Weekly_Sales
 
+\pagebreak
 # Diagnostic ------- REMOVE LATER
 
 ```r
@@ -1683,3 +1730,4 @@ ls()
 ## [7] "train"                    "trainStoresFeaturesMerge"
 ## [9] "weekNumber"
 ```
+

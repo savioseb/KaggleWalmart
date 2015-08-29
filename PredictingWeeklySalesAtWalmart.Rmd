@@ -20,21 +20,61 @@ output:
 # Setting up the R Markdown Report
 # echo & include is set to false because I do not want this on the report
 # enabling cache so we don't have to run the code everytime
-knitr::opts_chunk$set(cache=TRUE, out.width='400px' , dpi=300 )  
+knitr::opts_chunk$set(cache=TRUE, out.width='300px' , dpi=200 )  
 # width of the report & to prevent Scientific notations for large numbers
 options(width=80 , scipen=10000)
 ```
 
 
 \pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
 
-# 1. Executive Summary
+# Executive Summary
 Retail stores need to be able to predict sales forecasts for the future and study the effect how strategic offers affect sales, especially during holiday season. Since the number of days in holidays are limited, it becomes more challenging to be able to accurately predict how different aspects affect sales.
 
 This report will focus on a Walmart Data set that has Department-wise Weekly Sales of 45 Walmart stores. It will attempt to create a predictive model and also discuss the extent to which different factors affect the sales.
 
 \pagebreak
-
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\graphicspath{ {Images/} }
 
 # Introduction
 
@@ -52,24 +92,24 @@ The training data set has more than 400K records. The testing data set has over 
 ### The Challenge
 The challenge is to be able to predict how different holiday price markdowns affect the various departments in the store, to model extent of impact of these markdowns.
 
+\includegraphics{markdowns}
 <IMAGE src="Images/markdowns.png" />
 
 
-## 2.3 Getting the Data
+## Getting the Data
 The data was download from Kaggle.
 
 URL to the Kaggle Competition Site: https://www.kaggle.com/c/walmart-recruiting-store-sales-forecasting
 
-The files available are the following:<BR>
+The files available are the following:
+
+\includegraphics[scale=.5]{DataFilesImage}
 <IMAGE src="Images/DataFilesImage.png" />
 
 ### The Data Files
 Here we discuss the various CSV Files that are given by Walmart.
 
-#### 2.3.1.1 stores.csv
-Contains size and type of 45 stores (45 records).
-
-#### 2.3.1.2 train.csv
+#### train.csv
 Weekly sales data set from February 05, 2010 to November 11, 2012. It contains the following fields:
 
 * Store: store number
@@ -78,10 +118,16 @@ Weekly sales data set from February 05, 2010 to November 11, 2012. It contains t
 * Weekly_Sales: sales for the given department in the given store
 * IsHoliday: whether the week is a special holiday week
 
-#### 2.3.1.3 test.csv
+
+#### stores.csv
+Contains size and type of 45 stores (45 records).
+
+It contains annonymized data of the store, it's size and type.
+
+#### test.csv
 The data set with similar fields as train.csv, except without Weekly_Sales. This will be used to test the model with unseen data and can be evaluated by uploading the data set to Kaggle.
 
-#### 2.3.1.4 features.csv
+#### features.csv
 This data file contains additional relevant information relating to the physical and business environment around the store. The fields are as follows:
 
 * Store: store number
@@ -100,7 +146,7 @@ The four holidays fall in the following weeks in the data set:
 * Thanksgiving: 26-Nov-10, 25-Nov-11, 23-Nov-12, 29-Nov-13
 * Christmas: 31-Dec-10, 30-Dec-11, 28-Dec-12, 27-Dec-13
 
-### 2.3.2 Ingesting the Data
+### Ingesting the Data
 ```{r ingestTrain}
 # Ingesting the data from the Data folder: Training Dataset
 train <- read.csv("Data/train.csv")
@@ -119,7 +165,7 @@ features <- read.csv("Data/features.csv")
 test <- read.csv("Data/test.csv")
 ```
 
-## 2.4 R Libraries Used
+## R Libraries Used
 The following libraries are used in this report:
 
 ```{r librariesUsed}
@@ -133,29 +179,49 @@ library(scales)
 library(lubridate)
 # to calculate Kurtosis
 library(e1071)
-## to be able to plot in grids
+# to be able to plot in grids
 library(grid)
-## to be able to plot in grids
+# to be able to plot in grids
 library(gridExtra)
 ```
 
 
 \pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
 
-# 3. Stage 1: Data Exploration and Preparation
+# Stage 1: Data Exploration and Preparation
 
-## 3.1 Summary Statististics
+## Summary Statististics
 
-### 3.1.1 The Training Dataset (train)
+### The Training Dataset (train)
 This is the structure of the dataset
 ```{r trainDatasetStr, echo=FALSE}
-## Structure of Train Dataset
+# Structure of Train Dataset
 str(train)
 ```
 
 <BR>
 
-<code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 143 dates in total.
+There are 143 dates in total.
 
 ```{r convertingDateTrainDataset, include=FALSE}
 ## Changing the Date from "Format" type to "Date" Type 
@@ -179,7 +245,7 @@ rm(days)
 ```
 
 
-#### 3.1.1.1 Heavily Right-Skewed Weekly Sales
+#### Heavily Right-Skewed Weekly Sales
 It is interesting to note that for some departments the <code>Weekly_Sales</code> are **negative**. Returns and special offers cause these negative sales figures.
 
 The **Standard Deviation** for <code>Weekly_Sales</code> is ```r round( sd(train$Weekly_Sales) , 2)```. The **mean** is ```r round( mean(train$Weekly_Sales) , 2 )``` and **median** is ```r median(train$Weekly_Sales)```. The mean and the median are very far apart, indicating that the data is skewed - in this case, extremely **right-skewed**. The following histogram depicts this relationship - where you can clearly observe the long tail towards the right making it extremely right-skewed.
@@ -199,7 +265,7 @@ ggplot( train, aes( x = Weekly_Sales ) ) +
 
 Since the data is highle skewed, it would be more appropriate use log transformation to remove the skew to make make the data fit the assumptions of inferential statistics. But before we do that, we need to take care of Negative and Zero Values in the data.
 
-#### 3.1.1.2 Dealing with Negative and Zero Weekly Sales
+#### Dealing with Negative and Zero Weekly Sales
 Since Log transformation of negative numbers yeild <code>NA</code> and log transformation of 0 is a negative infinity value, we need to handle these values appropriately.
 
 Let us first find the total count of numbers that fit this description:
@@ -225,7 +291,7 @@ rm( train0 )
 ```
 
 
-#### 3.1.1.3 Log Transformation of Weekly Sales
+#### Log Transformation of Weekly Sales
 
 ```{r logtransformation}
 ## Create subset of train data set
@@ -254,7 +320,7 @@ ggplot( train, aes( x = Log_Weekly_Sales ) ) +
 The histogram is slightly **left-skewed**, but more normal than the previous distribution of <code>Weekly_Sales</code>.
 
 
-#### 3.1.1.4 Detailed Summary Statistics of Weekly Sales
+#### Detailed Summary Statistics of Weekly Sales
 ```{r functionStandardError}
 ## Function to calculate the Standard Error
 ## x: the vector of numerical values
@@ -341,7 +407,7 @@ rm(
 The **Kurtosis** value of <code>Log_Weekly_Sales</code> indicates that it is peaked - unimodal data.
 
 
-### 3.1.2 The Stores Dataset (stores)
+### The Stores Dataset (stores)
 ```{r storesDatasetStr}
 ## Structure of Stores Dataset
 str(stores)
@@ -377,14 +443,14 @@ tapply( stores$Size , stores$Type , mean )
 ```
 
 
-### 3.1.3 The Features Dataset (features)
+### The Features Dataset (features)
 
 ```{r featuresDatasetStr}
 ## Structure of features dataset
 str(features)
 ```
 
-<code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 182 dates in total. This data set is relevant for both the <code>train</code> and the <code>test</code> data set.
+There are 182 dates in total. This data set is relevant for both the <code>train</code> and the <code>test</code> data set.
 
 ```{r featuresSummary}
 ## Changing the Date from "Format" type to "Date" Type 
@@ -395,7 +461,7 @@ summary(features)
 
 The <code>features</code> data set has missing variables for <code>Markdown1-5</code>, <code>CPI</code> & <code>Unemployment</code>. We will discuss how we can treat these missing values below
 
-#### 3.1.3.1 Handling Consumer Price Index Missing Values
+#### Handling Consumer Price Index Missing Values
 To undertstand how the missing values are distributed in the <code>features</code> dataset let us first plot a heat map.
 
 ```{r calculateMeanCPIAcrossAllStores}
@@ -488,14 +554,14 @@ rm( CPI_DF , CPI_Max , CPI_Mean , CPI_Min ,
 
 
 
-### 3.1.4 The Test Dataset (test)
+### The Test Dataset (test)
 
 ```{r testDatasetStr}
 ## Structure of test dataset
 str(test)
 ```
 
-<code>Date</code> is ingested as factor (as opposed to being ingested as date type). There are 39 dates in total.
+There are 39 dates in total.
 
 ```{r testSummary}
 ## Changing the Date from "Format" type to "Date" Type 
@@ -506,8 +572,8 @@ summary(test)
 
 \pagebreak
 
-## 3.2 Data Preparation - Merging the Datasets
-### 3.2.1 Merging Train and Stores Datasets
+## Data Preparation - Merging the Datasets
+### Merging Train and Stores Datasets
 Since the <code>Type</code> & <code>Size</code> variables may influence the Weekly Sales, we are merging the <code>train</code> & <stores</code> data sets. We merge the data by <code>Store</code>.
 
 ```{r mergeTrainStores}
@@ -1019,13 +1085,20 @@ rm( totalSalesPerWeekDataFrame , totalSalesPerWeekDataFrameDuringHolidays )
 ### 3.3.4 Store-Department-wise Sales per Week - Time Series
 To see a representation of the granularity of the data, we would like to plot all the data points of Weekly Sales vs Time (Week)
 
-```{r allPoint}
-## plotting all the Weekly Sales figures - colored by Dept
-ggplot(trainStoresFeaturesMerge , 
-       aes(x=Date , y = Weekly_Sales , color = Dept ) ) +
-  geom_point() +
-  scale_y_continuous(name="Weekly Sales" )
+```{r allPoint, echo=FALSE}
+# Decided not to use this while generating the PDF since it made the report
+# extremely bulky with a PDF image of 18.2 Mb. Instead generated the image
+# as a PNG via HTML export and embedding the image into the report
+# 
+# plotting all the Weekly Sales figures - colored by Dept
+#ggplot(trainStoresFeaturesMerge , 
+#       aes(x=Date , y = Weekly_Sales , color = Dept ) ) +
+#  geom_point() +
+#  scale_y_continuous(name="Weekly Sales" )
 ```
+
+\includegraphics[scale=.25]{allPoint-1}
+<IMAGE src="Images/allPoint-1.png" />
 
 While it is not easy to make sense of a graph with more than 400 thousand data points, here are some salient features that stand out:
 
@@ -1303,3 +1376,4 @@ nrow(trainStoresFeaturesMerge)
 
 ls()
 ```
+

@@ -106,8 +106,28 @@
 \tableofcontents
 }
 \pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
 
-\section{1. Executive Summary}\label{executive-summary}
+\section{Executive Summary}\label{executive-summary}
 
 Retail stores need to be able to predict sales forecasts for the future
 and study the effect how strategic offers affect sales, especially
@@ -121,6 +141,27 @@ predictive model and also discuss the extent to which different factors
 affect the sales.
 
 \pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\graphicspath{ {Images/} }
 
 \section{Introduction}\label{introduction}
 
@@ -149,7 +190,9 @@ The challenge is to be able to predict how different holiday price
 markdowns affect the various departments in the store, to model extent
 of impact of these markdowns.
 
-\subsection{2.3 Getting the Data}\label{getting-the-data}
+\includegraphics{markdowns}
+
+\subsection{Getting the Data}\label{getting-the-data}
 
 The data was download from Kaggle.
 
@@ -158,15 +201,13 @@ URL to the Kaggle Competition Site:
 
 The files available are the following:
 
+\includegraphics[scale=.5]{DataFilesImage}
+
 \subsubsection{The Data Files}\label{the-data-files}
 
 Here we discuss the various CSV Files that are given by Walmart.
 
-\paragraph{2.3.1.1 stores.csv}\label{stores.csv}
-
-Contains size and type of 45 stores (45 records).
-
-\paragraph{2.3.1.2 train.csv}\label{train.csv}
+\paragraph{train.csv}\label{train.csv}
 
 Weekly sales data set from February 05, 2010 to November 11, 2012. It
 contains the following fields:
@@ -185,13 +226,19 @@ contains the following fields:
   IsHoliday: whether the week is a special holiday week
 \end{itemize}
 
-\paragraph{2.3.1.3 test.csv}\label{test.csv}
+\paragraph{stores.csv}\label{stores.csv}
+
+Contains size and type of 45 stores (45 records).
+
+It contains annonymized data of the store, it's size and type.
+
+\paragraph{test.csv}\label{test.csv}
 
 The data set with similar fields as train.csv, except without
 Weekly\_Sales. This will be used to test the model with unseen data and
 can be evaluated by uploading the data set to Kaggle.
 
-\paragraph{2.3.1.4 features.csv}\label{features.csv}
+\paragraph{features.csv}\label{features.csv}
 
 This data file contains additional relevant information relating to the
 physical and business environment around the store. The fields are as
@@ -234,37 +281,37 @@ The four holidays fall in the following weeks in the data set:
   Christmas: 31-Dec-10, 30-Dec-11, 28-Dec-12, 27-Dec-13
 \end{itemize}
 
-\subsubsection{2.3.2 Ingesting the Data}\label{ingesting-the-data}
+\subsubsection{Ingesting the Data}\label{ingesting-the-data}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{## Ingesting the data from the Data folder: Training Dataset}
+\CommentTok{# Ingesting the data from the Data folder: Training Dataset}
 \NormalTok{train <-}\StringTok{ }\KeywordTok{read.csv}\NormalTok{(}\StringTok{"Data/train.csv"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{## Ingesting the data from the Data folder: Stores Dataset}
+\CommentTok{# Ingesting the data from the Data folder: Stores Dataset}
 \NormalTok{stores <-}\StringTok{ }\KeywordTok{read.csv}\NormalTok{(}\StringTok{"Data/stores.csv"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{## Ingesting the data from the Data folder: features Dataset}
+\CommentTok{# Ingesting the data from the Data folder: features Dataset}
 \NormalTok{features <-}\StringTok{ }\KeywordTok{read.csv}\NormalTok{(}\StringTok{"Data/features.csv"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{## Ingesting the data from the Data folder: testing Dataset}
+\CommentTok{# Ingesting the data from the Data folder: testing Dataset}
 \NormalTok{test <-}\StringTok{ }\KeywordTok{read.csv}\NormalTok{(}\StringTok{"Data/test.csv"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-\subsection{2.4 R Libraries Used}\label{r-libraries-used}
+\subsection{R Libraries Used}\label{r-libraries-used}
 
 The following libraries are used in this report:
 
@@ -280,21 +327,41 @@ The following libraries are used in this report:
 \KeywordTok{library}\NormalTok{(lubridate)}
 \CommentTok{# to calculate Kurtosis}
 \KeywordTok{library}\NormalTok{(e1071)}
-\NormalTok{## to be able to plot in grids}
+\CommentTok{# to be able to plot in grids}
 \KeywordTok{library}\NormalTok{(grid)}
-\NormalTok{## to be able to plot in grids}
+\CommentTok{# to be able to plot in grids}
 \KeywordTok{library}\NormalTok{(gridExtra)}
 \end{Highlighting}
 \end{Shaded}
 
 \pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
 
-\section{3. Stage 1: Data Exploration and
+\section{Stage 1: Data Exploration and
 Preparation}\label{stage-1-data-exploration-and-preparation}
 
-\subsection{3.1 Summary Statististics}\label{summary-statististics}
+\subsection{Summary Statististics}\label{summary-statististics}
 
-\subsubsection{3.1.1 The Training Dataset
+\subsubsection{The Training Dataset
 (train)}\label{the-training-dataset-train}
 
 This is the structure of the dataset
@@ -308,7 +375,6 @@ This is the structure of the dataset
 ##  $ IsHoliday   : logi  FALSE TRUE FALSE FALSE FALSE FALSE ...
 \end{verbatim}
 
-Date is ingested as factor (as opposed to being ingested as date type).
 There are 143 dates in total.
 
 \begin{verbatim}
@@ -339,7 +405,7 @@ starts on a \texttt{Friday}. The last date recorded in the data set is
 \texttt{994} days between them - so the data consists of a total of
 \texttt{143} weeks of data.
 
-\paragraph{3.1.1.1 Heavily Right-Skewed Weekly
+\paragraph{Heavily Right-Skewed Weekly
 Sales}\label{heavily-right-skewed-weekly-sales}
 
 It is interesting to note that for some departments the Weekly\_Sales
@@ -354,14 +420,14 @@ The following histogram depicts this relationship - where you can
 clearly observe the long tail towards the right making it extremely
 right-skewed.
 
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/weeklySalesSkew-1}
+\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/weeklySalesSkew-1}
 
 Since the data is highle skewed, it would be more appropriate use log
 transformation to remove the skew to make make the data fit the
 assumptions of inferential statistics. But before we do that, we need to
 take care of Negative and Zero Values in the data.
 
-\paragraph{3.1.1.2 Dealing with Negative and Zero Weekly
+\paragraph{Dealing with Negative and Zero Weekly
 Sales}\label{dealing-with-negative-and-zero-weekly-sales}
 
 Since Log transformation of negative numbers yeild NA and log
@@ -405,7 +471,7 @@ Owing to the reasons mentioned above, it would be good to remove these
 observations from the dataset before continuting to do a Log
 Transoformation of Weekly\_Sales.
 
-\paragraph{3.1.1.3 Log Transformation of Weekly
+\paragraph{Log Transformation of Weekly
 Sales}\label{log-transformation-of-weekly-sales}
 
 \begin{Shaded}
@@ -461,12 +527,12 @@ The histogram below shows that the data is less skewed than earlier:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/logWeeklySalesHistogram-1}
+\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/logWeeklySalesHistogram-1}
 
 The histogram is slightly \textbf{left-skewed}, but more normal than the
 previous distribution of Weekly\_Sales.
 
-\paragraph{3.1.1.4 Detailed Summary Statistics of Weekly
+\paragraph{Detailed Summary Statistics of Weekly
 Sales}\label{detailed-summary-statistics-of-weekly-sales}
 
 \begin{Shaded}
@@ -584,7 +650,7 @@ Sales}\label{detailed-summary-statistics-of-weekly-sales}
 The \textbf{Kurtosis} value of Log\_Weekly\_Sales indicates that it is
 peaked - unimodal data.
 
-\subsubsection{3.1.2 The Stores Dataset
+\subsubsection{The Stores Dataset
 (stores)}\label{the-stores-dataset-stores}
 
 \begin{Shaded}
@@ -636,7 +702,7 @@ function of its size. The following boxplot indicates this:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/storeSizeBoxPlot-1}
+\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/storeSizeBoxPlot-1}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -674,7 +740,7 @@ function of its size. The following boxplot indicates this:
 ## 177247.73 101190.71  40541.67
 \end{verbatim}
 
-\subsubsection{3.1.3 The Features Dataset
+\subsubsection{The Features Dataset
 (features)}\label{the-features-dataset-features}
 
 \begin{Shaded}
@@ -700,7 +766,6 @@ function of its size. The following boxplot indicates this:
 ##  $ IsHoliday   : logi  FALSE TRUE FALSE FALSE FALSE FALSE ...
 \end{verbatim}
 
-Date is ingested as factor (as opposed to being ingested as date type).
 There are 182 dates in total. This data set is relevant for both the
 train and the test data set.
 
@@ -744,7 +809,7 @@ The features data set has missing variables for Markdown1-5, CPI \&
 Unemployment. We will discuss how we can treat these missing values
 below
 
-\paragraph{3.1.3.1 Handling Consumer Price Index Missing
+\paragraph{Handling Consumer Price Index Missing
 Values}\label{handling-consumer-price-index-missing-values}
 
 To undertstand how the missing values are distributed in the features
@@ -780,7 +845,7 @@ dataset let us first plot a heat map.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/CPIMissingHeatMap-1}
+\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/CPIMissingHeatMap-1}
 
 The following features stand out:
 
@@ -856,7 +921,7 @@ Let us visually verify if CPI data was imputed correctly
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/plottingNewCPI-1}
+\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/plottingNewCPI-1}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -869,8 +934,7 @@ Let us visually verify if CPI data was imputed correctly
 \end{Highlighting}
 \end{Shaded}
 
-\subsubsection{3.1.4 The Test Dataset
-(test)}\label{the-test-dataset-test}
+\subsubsection{The Test Dataset (test)}\label{the-test-dataset-test}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -887,7 +951,6 @@ Let us visually verify if CPI data was imputed correctly
 ##  $ IsHoliday: logi  FALSE FALSE FALSE TRUE FALSE FALSE ...
 \end{verbatim}
 
-Date is ingested as factor (as opposed to being ingested as date type).
 There are 39 dates in total.
 
 \begin{Shaded}
@@ -911,10 +974,10 @@ There are 39 dates in total.
 
 \pagebreak
 
-\subsection{3.2 Data Preparation - Merging the
+\subsection{Data Preparation - Merging the
 Datasets}\label{data-preparation---merging-the-datasets}
 
-\subsubsection{3.2.1 Merging Train and Stores
+\subsubsection{Merging Train and Stores
 Datasets}\label{merging-train-and-stores-datasets}
 
 Since the Type \& Size variables may influence the Weekly Sales, we are
@@ -1043,7 +1106,7 @@ We generate a heat map to study this interaction
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/heatmapStoreDept-1}
+\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/heatmapStoreDept-1}
 From the heat map we can draw the following broad conclusions:
 
 \begin{itemize}
@@ -1117,7 +1180,7 @@ Store size (x-axis) to understand the relationship between them.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/storeTypeScatterBoxGrid-1}
+\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/storeTypeScatterBoxGrid-1}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1314,7 +1377,7 @@ We discuss here the effect holidays have on Total Sales of 45 Stores.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/plottingSalesPerWeek-1}
+\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/plottingSalesPerWeek-1}
 
 We can clearly see some trends here:
 
@@ -1535,7 +1598,7 @@ We can clearly see some trends here:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/plottingSubsetOfHolidays-1}
+\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/plottingSubsetOfHolidays-1}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1559,17 +1622,7 @@ Series}\label{store-department-wise-sales-per-week---time-series}
 To see a representation of the granularity of the data, we would like to
 plot all the data points of Weekly Sales vs Time (Week)
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## plotting all the Weekly Sales figures - colored by Dept}
-\KeywordTok{ggplot}\NormalTok{(trainStoresFeaturesMerge , }
-       \KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{Date , }\DataTypeTok{y =} \NormalTok{Weekly_Sales , }\DataTypeTok{color =} \NormalTok{Dept ) ) +}
-\StringTok{  }\KeywordTok{geom_point}\NormalTok{() +}
-\StringTok{  }\KeywordTok{scale_y_continuous}\NormalTok{(}\DataTypeTok{name=}\StringTok{"Weekly Sales"} \NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/allPoint-1}
+\includegraphics[scale=.25]{allPoint-1}
 
 While it is not easy to make sense of a graph with more than 400
 thousand data points, here are some salient features that stand out:
@@ -1768,7 +1821,7 @@ We select a size of 2500 which is less than 10\% of Hyp\_Holiday.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/visualizingTheSamplesCollected-1}
+\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/visualizingTheSamplesCollected-1}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2016,7 +2069,7 @@ We select a size of 5000 which is less than 10\% of Hyp\_Holiday.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=400px]{PredictingWeeklySalesAtWalmart_files/figure-latex/visualizingTheSamplesCollected2-1}
+\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/visualizingTheSamplesCollected2-1}
 
 \begin{Shaded}
 \begin{Highlighting}[]
