@@ -22,6 +22,150 @@ train$Date <- as.Date(train$Date)
 features$Date <- as.Date(features$Date)
 test$Date <- as.Date( test$Date)
 
+
+############################################
+## Analyzing features
+############################################
+summary( features )
+
+
+############# FEATURES: MARKDOWN 1
+
+## to understand where these missing data lie, we will plot a
+## heat map
+ggplot( features , aes(x = Date, y = Store)) + 
+  geom_tile(aes(fill = MarkDown1)) +
+  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="Mark Down1") +
+  scale_y_continuous(name="Store")
+
+
+############# FEATURES : CPI
+
+meanCPIAcrossStores <- tapply( features$CPI , features$Date , FUN = mean )
+meanCPIAcrossStoresDF <- data.frame( meanCPIAcrossStores )
+meanCPIAcrossStoresDF$Date <- as.Date( rownames( meanCPIAcrossStoresDF ) )
+
+## heatmap to undersatnd where CPI is missing
+missingCPIHeatMap <- ggplot( features , aes(x = Date, y = Store)) + 
+  geom_tile(aes(fill = CPI)) +
+  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
+  scale_y_continuous(name="Store" ) +
+  theme( legend.position = "bottom" )
+## trend of Average CPI Across All Stores
+avgCPiIndexTrend <- ggplot( meanCPIAcrossStoresDF , aes(x = Date, y = meanCPIAcrossStores ) ) + 
+  geom_line() +
+  scale_y_continuous(name="MEAN CPI Across All Stores" ) +
+  stat_smooth( method = "lm" )
+grid.arrange(missingCPIHeatMap , avgCPiIndexTrend , ncol = 1 )
+
+
+
+## CPI MEAN, MAX MIN & Range tabulated into a Data Frame
+CPI_Mean <- tapply( features$CPI , features$Store , FUN = mean , na.rm= T )
+CPI_Max <- tapply( features$CPI , features$Store , FUN = max , na.rm= T )
+CPI_Min <- tapply( features$CPI , features$Store , FUN = min , na.rm= T )
+CPI_DF <- data.frame( CPI_Mean , CPI_Max , CPI_Min )
+CPI_DF$Range <- CPI_DF$CPI_Max - CPI_DF$CPI_Min 
+## Checking if there is a difference between Max and Min
+## - if no change then no rows
+CPI_DF[ CPI_DF$Range != 0 ,]
+
+
+## Removing CPI Columns not needed anymore
+CPI_DF$CPI_Min = CPI_DF$CPI_Max = CPI_DF$Range = NULL
+## Creating Store Column with the RowNAME
+CPI_DF$Store <- as.integer( rownames( CPI_DF ) )
+## Imputing CPI
+## merging the dataframes by Store
+features1 <- merge( features , CPI_DF , by="Store" )
+## removing old CPI Column
+features1$CPI = NULL
+## Renaming CPI_Mean to CPI
+colnames( features1 )[12] <- "CPI"
+
+## checking if the imputation was done correctly
+ggplot( features1 , aes(x = Date, y = Store)) + 
+  geom_tile(aes(fill = CPI)) +
+  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
+  scale_y_continuous(name="Store")
+
+## overwriting old features with features1 (with no missing values for CPI)
+features <- features1
+## removing unneccesary data elements
+rm( CPI_DF , CPI_Max , CPI_Mean , CPI_Min , features1 )
+
+
+ggplot( features , aes(x = Date, y = Store)) + 
+  geom_tile(aes(fill = )) +
+  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
+  scale_y_continuous(name="Store")
+
+
+
+############# FEATURES : Unemployment
+## heatmap to undersatnd where Unemployment is missing
+oldUnemploymentData <- ggplot( features , aes(x = Date, y = Store)) + 
+  geom_tile(aes(fill = Unemployment)) +
+  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="Unemployment") +
+  scale_y_continuous(name="Store")
+
+## Unemployment MEAN, MAX MIN & Range tabulated into a Data Frame
+Unemployment_Mean <- 
+  tapply( features$Unemployment , features$Store , FUN = mean , na.rm = T )
+Unemployment_Max <- 
+  tapply( features$Unemployment , features$Store , FUN = max , na.rm = T )
+Unemployment_Min <- 
+  tapply( features$Unemployment , features$Store , FUN = min , na.rm = T )
+Unemployment_DF <- 
+  data.frame( Unemployment_Mean , Unemployment_Max , Unemployment_Min )
+Unemployment_DF$Range <- Unemployment_DF$Unemployment_Max - Unemployment_DF$Unemployment_Min 
+## Checking if there is a difference between Max and Min
+## - if no change then no rows
+Unemployment_DF[ Unemployment_DF$Range > 0 ,]
+
+
+## Removing CPI Columns not needed anymore
+CPI_DF$CPI_Min = CPI_DF$CPI_Max = CPI_DF$Range = NULL
+## Creating Store Column with the RowNAME
+CPI_DF$Store <- as.integer( rownames( CPI_DF ) )
+## Imputing CPI
+## merging the dataframes by Store
+features1 <- merge( features , CPI_DF , by="Store" )
+## removing old CPI Column
+features1$CPI = NULL
+## Renaming CPI_Mean to CPI
+colnames( features1 )[12] <- "CPI"
+
+## checking if the imputation was done correctly
+ggplot( features1 , aes(x = Date, y = Store)) + 
+  geom_tile(aes(fill = CPI)) +
+  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
+  scale_y_continuous(name="Store")
+
+## overwriting old features with features1 (with no missing values for CPI)
+features <- features1
+## removing unneccesary data elements
+rm( CPI_DF , CPI_Max , CPI_Mean , CPI_Min , features1 )
+
+
+ggplot( features , aes(x = Date, y = Store)) + 
+  geom_tile(aes(fill = )) +
+  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
+  scale_y_continuous(name="Store")
+
+
+
+
+
+
+
+
+
+###################################################################
+#################################################################
+############### MERGING DATASETS #######################
+################################################################
+
 ## Merging the datasets
 trainStoresMerge <- merge(train , stores , by = "Store")
 trainStoresFeaturesMerge <- merge( trainStoresMerge , features , by = c( "Store" , "Date" ) )
@@ -677,11 +821,27 @@ rm( pValue , zScore , xBar , Diff_Log_Weekly_Sales , Holiday_Sample , NotHoliday
 
 
 # Model Building
-modelNot <- lm( Weekly_Sales ~ . -Log_Weekly_Sales , data = trainNotNANMore )
-modelLog <- lm( Log_Weekly_Sales ~ . -Weekly_Sales , data = trainNotNANMore )
-summary(trainNotNANMore)
+
+trainStoresFeaturesMerge$TotalSales = trainStoresFeaturesMerge$TotalSalesInMillion = NULL
+str(trainStoresFeaturesMerge)
+
+## removing HolidaySeasonId before building model 
+## because we already have another factor variable
+trainStoresFeaturesMerge$HolidaySeasonId = NULL
 
 
+modelLog <- lm( 
+  formula = Log_Weekly_Sales ~ . -Date -Weekly_Sales , 
+  data = trainStoresFeaturesMerge )
 
 
+model_Weekly_Sales = lm( 
+  formula = Weekly_Sales ~
+    Store + Dept + Type + IsHoliday +  Size +
+    Temperature + Fuel_Price + 
+    #MarkDown1 + MarkDown2 + MarkDown3 + MarkDown4 + MarkDown5 +
+    CPI + Unemployment +
+    HolidaySeasonType + IsHolidaySeason + 
+    WeekNumber + Month , data = trainStoresFeaturesMerge )
 
+summary(model_Weekly_Sales)

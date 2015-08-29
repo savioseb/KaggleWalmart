@@ -201,7 +201,7 @@ ggplot( train, aes( x = Weekly_Sales ) ) +
   scale_x_continuous( "Weekly Sales" )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/weeklySalesSkew-1.png" title="" alt="" width="800px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/weeklySalesSkew-1.png" title="" alt="" width="750px" />
 
 
 Since the data is highle skewed, it would be more appropriate use log transformation to remove the skew to make make the data fit the assumptions of inferential statistics. But before we do that, we need to take care of Negative and Zero Values in the data.
@@ -289,7 +289,7 @@ ggplot( train, aes( x = Log_Weekly_Sales ) ) +
   scale_x_continuous( "log( Weekly_Sales )" )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/logWeeklySalesHistogram-1.png" title="" alt="" width="800px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/logWeeklySalesHistogram-1.png" title="" alt="" width="750px" />
 
 The histogram is slightly **left-skewed**, but more normal than the previous distribution of <code>Weekly_Sales</code>.
 
@@ -449,7 +449,7 @@ ggplot(data=stores,
   scale_fill_brewer( name = "Store Type" , palette = "Dark2")
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeSizeBoxPlot-1.png" title="" alt="" width="800px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeSizeBoxPlot-1.png" title="" alt="" width="750px" />
 
 
 ```r
@@ -544,7 +544,115 @@ summary(features)
 ##  NA's   :4140       NA's   :585     NA's   :585
 ```
 
-The <code>features</code> data set has missing variables for <code>Markdown1-5</code>, <code>CPI</code> & <code>Unemployment</code>.
+The <code>features</code> data set has missing variables for <code>Markdown1-5</code>, <code>CPI</code> & <code>Unemployment</code>. We will discuss how we can treat these missing values below
+
+#### 3.1.3.1 Handling Consumer Price Index Missing Values
+To undertstand how the missing values are distributed in the <code>features</code> dataset let us first plot a heat map.
+
+
+```r
+## Calculating the mean CPI Across all the stores by Date
+meanCPIAcrossStores <- tapply( features$CPI , features$Date , FUN = mean )
+## Converting it into Data Frame
+meanCPIAcrossStoresDF <- data.frame( meanCPIAcrossStores )
+## Adding the row Data to the data frame to see the trend
+meanCPIAcrossStoresDF$Date <- as.Date( rownames( meanCPIAcrossStoresDF ) )
+```
+
+
+```r
+## heatmap to undersatnd where CPI is missing
+missingCPIHeatMap <- ggplot( features , aes(x = Date, y = Store)) + 
+  geom_tile(aes(fill = CPI)) +
+  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
+  scale_y_continuous(name="Store") +
+  theme( legend.position = "none" )
+## trend of Average CPI Across All Stores
+avgCPiIndexTrend <- ggplot( meanCPIAcrossStoresDF , aes(x = Date, y = meanCPIAcrossStores ) ) + 
+  geom_line() +
+  scale_y_continuous(name="MEAN CPI Across All Stores" ) +
+  ## Adding a linear model to view the trend
+  stat_smooth( method = "lm" )
+## putting the graphs into a grid
+grid.arrange(missingCPIHeatMap , avgCPiIndexTrend , ncol = 1 )
+```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/CPIMissingHeatMap-1.png" title="" alt="" width="750px" />
+
+The following features stand out:
+
+* Data for CPI is missing a little after mid-2013
+* There is high variation of CPI between different stores
+* But the variation over time is minimal - as the colors on the heat map suggest - which stays constant
+* Taking an average CPI across all stores, we notice an upward trend
+
+It is not feasible to fetch the missing CPI Value for anonymised stores, therefore, we will build a linear model to predict the CPI Value for the missing values.
+
+
+
+```r
+## CPI MEAN, MAX MIN & Range tabulated into a Data Frame
+CPI_Mean <- tapply( features$CPI , features$Store , FUN = mean , na.rm= T )
+CPI_Max <- tapply( features$CPI , features$Store , FUN = mean , na.rm= T )
+CPI_Min <- tapply( features$CPI , features$Store , FUN = mean , na.rm= T )
+CPI_DF <- data.frame( CPI_Mean , CPI_Max , CPI_Min )
+CPI_DF$Range <- CPI_DF$CPI_Max - CPI_DF$CPI_Min 
+## Checking if there is a difference between Max and Min
+## - if no change then no rows
+CPI_DF[ CPI_DF$Range != 0 ,]
+```
+
+```
+## [1] CPI_Mean CPI_Max  CPI_Min  Range   
+## <0 rows> (or 0-length row.names)
+```
+
+While checking if there was any variation for CPI, we find that there are no rows. This indicates that there is no variation in CPI and we can confidently impute the missing values of CPI to each store's specific CPI.
+
+
+```r
+## Removing CPI Columns not needed anymore
+CPI_DF$CPI_Min = CPI_DF$CPI_Max = CPI_DF$Range = NULL
+## Creating Store Column with the RowNAME
+CPI_DF$Store <- as.integer( rownames( CPI_DF ) )
+## Imputing CPI
+## merging the dataframes by Store
+features1 <- merge( features , CPI_DF , by="Store" )
+## removing old CPI Column
+features1$CPI = NULL
+## Renaming CPI_Mean to CPI - it is the last column in the data frame
+colnames( features1 )[ ncol( features1 ) ] <- "CPI"
+```
+
+Let us visually verify if CPI data was imputed correctly
+
+
+```r
+## checking if the imputation was done correctly
+newCPIHeatMap <- ggplot( features1 , aes(x = Date, y = Store)) + 
+  geom_tile(aes(fill = CPI)) +
+  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
+  scale_y_continuous(name="Store") +
+  theme( legend.position = "none" )
+## arranging both the old and new graphs in a grid
+grid.arrange( missingCPIHeatMap , newCPIHeatMap , ncol = 1 )
+```
+
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingNewCPI-1.png" title="" alt="" width="750px" />
+
+
+
+
+```r
+## overwriting old features with features1 (with no missing values for CPI)
+features <- features1
+## removing unneccesary data elements
+rm( CPI_DF , CPI_Max , CPI_Mean , CPI_Min , 
+    features1 , newCPIHeatMap , missingCPIHeatMap ,
+    meanCPIAcrossStores , meanCPIAcrossStoresDF , avgCPiIndexTrend )
+```
+
+
 
 ### 3.1.4 The Test Dataset (test)
 
@@ -686,7 +794,7 @@ ggplot( storeDeptTotalSalesDataFrame , aes(x = Store, y = Dept)) +
   scale_y_continuous(name="Department")
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/heatmapStoreDept-1.png" title="" alt="" width="800px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/heatmapStoreDept-1.png" title="" alt="" width="750px" />
 <BR>
 From the heat map we can draw the following broad conclusions:
 
@@ -747,7 +855,7 @@ boxplotStoreSize <- ggplot(data=stores,
 grid.arrange( scatterPlotStoreSize , boxplotStoreSize , nrow = 1 )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeTypeScatterBoxGrid-1.png" title="" alt="" width="800px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/storeTypeScatterBoxGrid-1.png" title="" alt="" width="750px" />
 
 ```r
 ## removing the plots from memory
@@ -933,7 +1041,7 @@ ggplot( totalSalesPerWeekDataFrame ,
   scale_color_brewer(palette="Dark2" , name = "Season Type")
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSalesPerWeek-1.png" title="" alt="" width="800px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSalesPerWeek-1.png" title="" alt="" width="750px" />
 
 We can clearly see some trends here:
 
@@ -1132,7 +1240,7 @@ ggplot( totalSalesPerWeekDataFrameDuringHolidays ,
     ) 
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSubsetOfHolidays-1.png" title="" alt="" width="800px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/plottingSubsetOfHolidays-1.png" title="" alt="" width="750px" />
 
 
 
@@ -1162,7 +1270,7 @@ ggplot(trainStoresFeaturesMerge ,
   scale_y_continuous(name="Weekly Sales" )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/allPoint-1.png" title="" alt="" width="800px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/allPoint-1.png" title="" alt="" width="750px" />
 
 While it is not easy to make sense of a graph with more than 400 thousand data points, here are some salient features that stand out:
 
@@ -1197,6 +1305,8 @@ We have created Week and month numbers to influence the regression model we will
 ## Merging holidayDateTableDataFrame with trainStoresFeaturesMerge
 trainStoresFeaturesMerge <- 
   merge( trainStoresFeaturesMerge , holidayDateTableDataFrame , by = "Date" )
+## removing holidayDateTableDataFrame from memory
+rm( holidayDateTableDataFrame )
 ```
 
 
@@ -1303,7 +1413,7 @@ boxPlotDensity <- ggplot( sampleDensityDf , aes( colorVar , xVar ) ) +
 grid.arrange( plottingDensity , boxPlotDensity , nrow = 1 )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/visualizingTheSamplesCollected-1.png" title="" alt="" width="800px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/visualizingTheSamplesCollected-1.png" title="" alt="" width="750px" />
 
 ```r
 ## removing plots from memory
@@ -1475,7 +1585,7 @@ boxPlotDensity <- ggplot( sampleDensityDf , aes( colorVar , xVar ) ) +
 grid.arrange( plottingDensity , boxPlotDensity , nrow = 1 )
 ```
 
-<img src="PredictingWeeklySalesAtWalmart_files/figure-html/visualizingTheSamplesCollected2-1.png" title="" alt="" width="800px" />
+<img src="PredictingWeeklySalesAtWalmart_files/figure-html/visualizingTheSamplesCollected2-1.png" title="" alt="" width="750px" />
 
 ```r
 ## removing plots from memory
@@ -1567,9 +1677,9 @@ ls()
 ```
 
 ```
-##  [1] "features"                  "holidayDateTableDataFrame"
-##  [3] "lagpad"                    "standardError"            
-##  [5] "stores"                    "test"                     
-##  [7] "testStoresFeaturesMerge"   "train"                    
-##  [9] "trainStoresFeaturesMerge"  "weekNumber"
+## [1] "features"                 "lagpad"                  
+## [3] "standardError"            "stores"                  
+## [5] "test"                     "testStoresFeaturesMerge" 
+## [7] "train"                    "trainStoresFeaturesMerge"
+## [9] "weekNumber"
 ```
