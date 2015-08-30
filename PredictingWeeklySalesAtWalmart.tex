@@ -130,15 +130,38 @@
 \section{Executive Summary}\label{executive-summary}
 
 Retail stores need to be able to predict sales forecasts for the future
-and study the effect how strategic offers affect sales, especially
-during holiday season. Since the number of days in holidays are limited,
-it becomes more challenging to be able to accurately predict how
-different aspects affect sales.
+and study the effect of strategic offers and how they affect sales,
+especially during holiday season. Since the number of days in holidays
+are limited, it becomes more challenging to be able to accurately
+predict how different aspects affect sales.
+
+Businesses are trying to leverage as much as possible to gain
+marketshare and improve bottomline. It is imperative to be able to know
+how one variable affects the other and what is the degree of change.
+
+This report specifically addresses the question of how holiday
+markdowns, Consumer Price Index (CPI), Fuel Price \& Temperature affect
+the weekly sales at Walmart.
 
 This report will focus on a Walmart Data set that has Department-wise
-Weekly Sales of 45 Walmart stores. It will attempt to create a
-predictive model and also discuss the extent to which different factors
-affect the sales.
+Weekly Sales of 45 anonymized Walmart stores. It will attempt to create
+a predictive model and also discuss the extent to which different
+factors affect the sales.
+
+Salient features of the data set:
+
+\begin{itemize}
+\itemsep1pt\parskip0pt\parsep0pt
+\item
+  Over 400 Thousand data points for training and over 100 thousand data
+  points for testing predictions
+\item
+  Missing data exist - they need to be imputed values systematically to
+  ensure that the model is good
+\item
+  Weekly sales data is highly skewed to the right - adding an extra
+  level of complexity
+\end{itemize}
 
 \pagebreak
 \hfill \break
@@ -281,59 +304,6 @@ The four holidays fall in the following weeks in the data set:
   Christmas: 31-Dec-10, 30-Dec-11, 28-Dec-12, 27-Dec-13
 \end{itemize}
 
-\subsubsection{Ingesting the Data}\label{ingesting-the-data}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\CommentTok{# Ingesting the data from the Data folder: Training Dataset}
-\NormalTok{train <-}\StringTok{ }\KeywordTok{read.csv}\NormalTok{(}\StringTok{"Data/train.csv"}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\CommentTok{# Ingesting the data from the Data folder: Stores Dataset}
-\NormalTok{stores <-}\StringTok{ }\KeywordTok{read.csv}\NormalTok{(}\StringTok{"Data/stores.csv"}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\CommentTok{# Ingesting the data from the Data folder: features Dataset}
-\NormalTok{features <-}\StringTok{ }\KeywordTok{read.csv}\NormalTok{(}\StringTok{"Data/features.csv"}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\CommentTok{# Ingesting the data from the Data folder: testing Dataset}
-\NormalTok{test <-}\StringTok{ }\KeywordTok{read.csv}\NormalTok{(}\StringTok{"Data/test.csv"}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\subsection{R Libraries Used}\label{r-libraries-used}
-
-The following libraries are used in this report:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\CommentTok{# Grammar of Graphics Plotting Library}
-\KeywordTok{library}\NormalTok{(ggplot2)}
-\CommentTok{# To use 'melt'}
-\KeywordTok{library}\NormalTok{(reshape2)}
-\CommentTok{# to enable commas in graphs}
-\KeywordTok{library}\NormalTok{(scales)}
-\CommentTok{# to get the month number from date variable}
-\KeywordTok{library}\NormalTok{(lubridate)}
-\CommentTok{# to calculate Kurtosis}
-\KeywordTok{library}\NormalTok{(e1071)}
-\CommentTok{# to be able to plot in grids}
-\KeywordTok{library}\NormalTok{(grid)}
-\CommentTok{# to be able to plot in grids}
-\KeywordTok{library}\NormalTok{(gridExtra)}
-\end{Highlighting}
-\end{Shaded}
-
 \pagebreak
 \hfill \break
 \hfill \break
@@ -356,8 +326,8 @@ The following libraries are used in this report:
 \hfill \break
 \hfill \break
 
-\section{Stage 1: Data Exploration and
-Preparation}\label{stage-1-data-exploration-and-preparation}
+\section{Data Exploration and Preparation (Stage
+1)}\label{data-exploration-and-preparation-stage-1}
 
 \subsection{Summary Statististics}\label{summary-statististics}
 
@@ -375,29 +345,32 @@ This is the structure of the dataset
 ##  $ IsHoliday   : logi  FALSE TRUE FALSE FALSE FALSE FALSE ...
 \end{verbatim}
 
-There are 143 dates in total.
+Summary statistics for the train data set is given below:
 
 \begin{verbatim}
-##      Store           Dept            Date             Weekly_Sales   
-##  Min.   : 1.0   Min.   : 1.00   Min.   :2010-02-05   Min.   : -4989  
-##  1st Qu.:11.0   1st Qu.:18.00   1st Qu.:2010-10-08   1st Qu.:  2080  
-##  Median :22.0   Median :37.00   Median :2011-06-17   Median :  7612  
-##  Mean   :22.2   Mean   :44.26   Mean   :2011-06-18   Mean   : 15981  
-##  3rd Qu.:33.0   3rd Qu.:74.00   3rd Qu.:2012-02-24   3rd Qu.: 20206  
-##  Max.   :45.0   Max.   :99.00   Max.   :2012-10-26   Max.   :693099  
+##      Store             Dept             Date             Weekly_Sales   
+##  13     : 10474   1      :  6435   Min.   :2010-02-05   Min.   : -4989  
+##  10     : 10315   2      :  6435   1st Qu.:2010-10-08   1st Qu.:  2080  
+##  4      : 10272   3      :  6435   Median :2011-06-17   Median :  7612  
+##  1      : 10244   4      :  6435   Mean   :2011-06-18   Mean   : 15981  
+##  2      : 10238   7      :  6435   3rd Qu.:2012-02-24   3rd Qu.: 20206  
+##  24     : 10228   8      :  6435   Max.   :2012-10-26   Max.   :693099  
+##  (Other):359799   (Other):382960                                        
 ##  IsHoliday      
 ##  Mode :logical  
 ##  FALSE:391909   
 ##  TRUE :29661    
 ##  NA's :0        
 ##                 
+##                 
 ## 
 \end{verbatim}
 
- There is no missing data in the data set.
+There is no missing data in the data set.
 
 As discussed in the Introduction, this report contains data of 45 stores
-- represented by Store. There are a total of 99 stores in all.
+- represented by Store. There are a total of 81 departments in all
+identified between 1 to 99.
 
 The starting date for training data set is \texttt{2010-02-05}. It
 starts on a \texttt{Friday}. The last date recorded in the data set is
@@ -416,11 +389,6 @@ The \textbf{Standard Deviation} for Weekly\_Sales is \texttt{22711.18}.
 The \textbf{mean} is \texttt{15981.26} and \textbf{median} is
 \texttt{7612.03}. The mean and the median are very far apart, indicating
 that the data is skewed - in this case, extremely \textbf{right-skewed}.
-The following histogram depicts this relationship - where you can
-clearly observe the long tail towards the right making it extremely
-right-skewed.
-
-\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/weeklySalesSkew-1}
 
 Since the data is highle skewed, it would be more appropriate use log
 transformation to remove the skew to make make the data fit the
@@ -430,36 +398,16 @@ take care of Negative and Zero Values in the data.
 \paragraph{Dealing with Negative and Zero Weekly
 Sales}\label{dealing-with-negative-and-zero-weekly-sales}
 
+There are \texttt{1358} rows that are zero or negative.
+
 Since Log transformation of negative numbers yeild NA and log
-transformation of 0 is a negative infinity value, we need to handle
-these values appropriately.
-
-Let us first find the total count of numbers that fit this description:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## subsetting the values that are negative and 0}
-\NormalTok{train0 <-}\StringTok{ }\KeywordTok{subset}\NormalTok{( train, train$Weekly_Sales <=}\StringTok{ }\DecValTok{0} \NormalTok{)}
-\NormalTok{### Printing the first 5 rows of the data with negative and 0 values}
-\KeywordTok{head}\NormalTok{( train0 )}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-##      Store Dept       Date Weekly_Sales IsHoliday
-## 847      1    6 2012-08-10      -139.65     FALSE
-## 2385     1   18 2012-05-04        -1.27     FALSE
-## 6049     1   47 2010-02-19      -863.00     FALSE
-## 6050     1   47 2010-03-12      -698.00     FALSE
-## 6052     1   47 2010-10-08       -58.00     FALSE
-## 6056     1   47 2011-03-11         0.00     FALSE
-\end{verbatim}
+transformation of 0 is a negative infinity value(-Inf), we need to
+handle these values appropriately.
 
 \begin{itemize}
 \itemsep1pt\parskip0pt\parsep0pt
 \item
-  The data set represents a paltry \texttt{0.3\%} of the full dataset -
-  it has \texttt{1358} observations
+  The data set represents a paltry \texttt{0.3\%} of the full dataset
 \item
   The absolute sum of this Weekly\_Sales in this filtered data set is
   only \texttt{0.001\%} of the overall sum of Weekly\_Sales
@@ -474,151 +422,14 @@ Transoformation of Weekly\_Sales.
 \paragraph{Log Transformation of Weekly
 Sales}\label{log-transformation-of-weekly-sales}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Create subset of train data set}
-\NormalTok{train <-}\StringTok{ }\KeywordTok{subset}\NormalTok{( train , train$Weekly_Sales >}\StringTok{ }\DecValTok{0} \NormalTok{)}
-\NormalTok{## Make Log Transformation for Weekly_Sales}
-\NormalTok{train$Log_Weekly_Sales <-}\StringTok{ }\KeywordTok{log}\NormalTok{(train$Weekly_Sales)}
-\NormalTok{## remove train0}
-\KeywordTok{rm}\NormalTok{( train0 )}
-\end{Highlighting}
-\end{Shaded}
+The histogram below shows the the change:
 
-\begin{verbatim}
-## Warning in rm(train0): object 'train0' not found
-\end{verbatim}
+\includegraphics[width=450px]{PredictingWeeklySalesAtWalmart_files/figure-latex/logWeeklySalesHistogram-1}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## summary statistics of Weekly_Sales and Log_Weekly_Sales}
-\KeywordTok{summary}\NormalTok{(train$Weekly_Sales)}
-\end{Highlighting}
-\end{Shaded}
+The log(Weekly\_Sales) is slightly \textbf{left-skewed}, but more normal
+than the distribution of Weekly\_Sales.
 
-\begin{verbatim}
-##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##       0    2120    7662   16030   20270  693100
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{summary}\NormalTok{( train$Log_Weekly_Sales )}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##  -4.605   7.659   8.944   8.521   9.917  13.450
-\end{verbatim}
-
-We notice that the Median and the mean are more closer to teach other.
-The histogram below shows that the data is less skewed than earlier:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## plotting the log( Weekly_Sales ) histogram}
-\KeywordTok{ggplot}\NormalTok{( train, }\KeywordTok{aes}\NormalTok{( }\DataTypeTok{x =} \NormalTok{Log_Weekly_Sales ) ) +}
-\StringTok{  }\KeywordTok{geom_histogram}\NormalTok{(}\DataTypeTok{binwidth=}\NormalTok{.}\DecValTok{2} \NormalTok{) +}\StringTok{ }
-\StringTok{  }\NormalTok{## Vertical line indicating the mean value}
-\StringTok{  }\KeywordTok{geom_vline}\NormalTok{( }\KeywordTok{aes}\NormalTok{( }\DataTypeTok{xintercept =} \KeywordTok{mean}\NormalTok{( Log_Weekly_Sales ) ), }\DataTypeTok{color=}\StringTok{"red"} \NormalTok{) +}
-\StringTok{  }\KeywordTok{scale_y_continuous}\NormalTok{( }\StringTok{"Frequency of Occurance"} \NormalTok{) +}
-\StringTok{  }\KeywordTok{scale_x_continuous}\NormalTok{( }\StringTok{"log( Weekly_Sales )"} \NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/logWeeklySalesHistogram-1}
-
-The histogram is slightly \textbf{left-skewed}, but more normal than the
-previous distribution of Weekly\_Sales.
-
-\paragraph{Detailed Summary Statistics of Weekly
-Sales}\label{detailed-summary-statistics-of-weekly-sales}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Function to calculate the Standard Error}
-\NormalTok{## x: the vector of numerical values}
-\NormalTok{## returns the standard error of the vector}
-\NormalTok{standardError <-}\StringTok{ }\NormalTok{function( x ) \{}
-  \KeywordTok{sd}\NormalTok{( x )/}\KeywordTok{sqrt}\NormalTok{( }\KeywordTok{length}\NormalTok{( x ) )}
-\NormalTok{\}}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Calculating Detailed Summary Statistics for Weekly_Sales}
-\NormalTok{Weekly_Sales <-}\StringTok{ }\KeywordTok{c}\NormalTok{( }
-  \KeywordTok{mean}\NormalTok{( train$Weekly_Sales ) ,}
-  \KeywordTok{standardError}\NormalTok{(  train$Weekly_Sales ) ,}
-  \KeywordTok{median}\NormalTok{( train$Weekly_Sales) ,}
-  \KeywordTok{sd}\NormalTok{( train$Weekly_Sales ) ,}
-  \KeywordTok{var}\NormalTok{( train$Weekly_Sales ) , }
-  \KeywordTok{kurtosis}\NormalTok{( train$Weekly_Sales ) ,}
-  \KeywordTok{skewness}\NormalTok{( train$Weekly_Sales ) ,}
-  \KeywordTok{range}\NormalTok{( train$Weekly_Sales )[}\DecValTok{2}\NormalTok{]-}\KeywordTok{range}\NormalTok{( train$Weekly_Sales )[}\DecValTok{1}\NormalTok{] ,}
-  \KeywordTok{min}\NormalTok{( train$Weekly_Sales ) ,}
-  \KeywordTok{max}\NormalTok{( train$Weekly_Sales ) ,}
-  \KeywordTok{sum}\NormalTok{( train$Weekly_Sales ),}
-  \KeywordTok{length}\NormalTok{( train$Weekly_Sales ) }
-\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Calculating Detailed Summary Statistics for Weekly_Sales}
-\NormalTok{Log_Weekly_Sales <-}\StringTok{ }\KeywordTok{c}\NormalTok{( }
-  \KeywordTok{mean}\NormalTok{( train$Log_Weekly_Sales ) ,}
-  \KeywordTok{standardError}\NormalTok{(  train$Log_Weekly_Sales ) ,}
-  \KeywordTok{median}\NormalTok{( train$Log_Weekly_Sales) ,}
-  \KeywordTok{sd}\NormalTok{( train$Log_Weekly_Sales ) ,}
-  \KeywordTok{var}\NormalTok{( train$Log_Weekly_Sales ) , }
-  \KeywordTok{kurtosis}\NormalTok{( train$Log_Weekly_Sales ) ,}
-  \KeywordTok{skewness}\NormalTok{( train$Log_Weekly_Sales ) ,}
-  \KeywordTok{range}\NormalTok{( train$Log_Weekly_Sales )[}\DecValTok{2}\NormalTok{]-}\KeywordTok{range}\NormalTok{( train$Log_Weekly_Sales )[}\DecValTok{1}\NormalTok{] ,}
-  \KeywordTok{min}\NormalTok{( train$Log_Weekly_Sales ) ,}
-  \KeywordTok{max}\NormalTok{( train$Log_Weekly_Sales ) ,}
-  \KeywordTok{sum}\NormalTok{( train$Log_Weekly_Sales ),}
-  \KeywordTok{length}\NormalTok{( train$Log_Weekly_Sales ) }
-\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Row Headings of the Summary statistics}
-\NormalTok{Description <-}\StringTok{ }\KeywordTok{c}\NormalTok{(}
-  \StringTok{"Mean"}\NormalTok{,}
-  \StringTok{"Standard Error"} \NormalTok{,}
-  \StringTok{"Median"} \NormalTok{, }
-  \StringTok{"Standard Deviation"} \NormalTok{,}
-  \StringTok{"Variance"} \NormalTok{, }
-  \StringTok{"Kurtosis"} \NormalTok{,}
-  \StringTok{"Skewness"} \NormalTok{,}
-  \StringTok{"Range"} \NormalTok{,}
-  \StringTok{"Min"} \NormalTok{,}
-  \StringTok{"Max"} \NormalTok{,}
-  \StringTok{"Sum"} \NormalTok{,}
-  \StringTok{"Count"} 
-\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Making a dataframe with the data}
-\NormalTok{Detailed_Summary_Statistics_on_Weekly_Sales <-}\StringTok{ }
-\StringTok{  }\KeywordTok{data.frame}\NormalTok{( }
-    \DataTypeTok{Description=}\NormalTok{Description , }
-    \DataTypeTok{Weekly_Sales =} \NormalTok{Weekly_Sales ,}
-    \DataTypeTok{Log_Weekly_Sales =} \NormalTok{Log_Weekly_Sales}
-    \NormalTok{)}
-\NormalTok{## printing out the detailed summary statistics }
-\KeywordTok{print}\NormalTok{( Detailed_Summary_Statistics_on_Weekly_Sales , }\DataTypeTok{row.names =} \NormalTok{F )}
-\end{Highlighting}
-\end{Shaded}
+Detailed summary statistics on weekly sales are given below:
 
 \begin{verbatim}
 ##         Description      Weekly_Sales  Log_Weekly_Sales
@@ -636,43 +447,22 @@ Sales}\label{detailed-summary-statistics-of-weekly-sales}
 ##               Count     420212.000000  420212.000000000
 \end{verbatim}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Removing intermediate data}
-\KeywordTok{rm}\NormalTok{( }
-  \NormalTok{Weekly_Sales ,  }
-  \NormalTok{Log_Weekly_Sales , }
-  \NormalTok{Description , }
-  \NormalTok{Detailed_Summary_Statistics_on_Weekly_Sales )}
-\end{Highlighting}
-\end{Shaded}
-
 The \textbf{Kurtosis} value of Log\_Weekly\_Sales indicates that it is
-peaked - unimodal data.
+peaked data.
 
 \subsubsection{The Stores Dataset
 (stores)}\label{the-stores-dataset-stores}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Structure of Stores Dataset}
-\KeywordTok{str}\NormalTok{(stores)}
-\end{Highlighting}
-\end{Shaded}
+The structure of Stores Data Set is as follows:
 
 \begin{verbatim}
 ## 'data.frame':    45 obs. of  3 variables:
-##  $ Store: int  1 2 3 4 5 6 7 8 9 10 ...
+##  $ Store: Factor w/ 45 levels "1","2","3","4",..: 1 2 3 4 5 6 7 8 9 10 ...
 ##  $ Type : Factor w/ 3 levels "A","B","C": 1 1 2 1 2 1 2 1 2 2 ...
 ##  $ Size : int  151315 202307 37392 205863 34875 202505 70713 155078 125833 126512 ...
 \end{verbatim}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## summary Statistics of Stores dataset}
-\KeywordTok{summary}\NormalTok{(stores)}
-\end{Highlighting}
-\end{Shaded}
+Summmary Statistics on the data are given below:
 
 \begin{verbatim}
 ##      Store    Type        Size       
@@ -684,76 +474,30 @@ peaked - unimodal data.
 ##  Max.   :45          Max.   :219622
 \end{verbatim}
 
-No missing data.
+There is no missing data. The stores are grouped into types, and it
+appears to be mostly a function of its size. The following boxplot
+indicates this:
 
-The stores are grouped into types, and it appears to be mostly a
-function of its size. The following boxplot indicates this:
+\includegraphics[width=450px]{PredictingWeeklySalesAtWalmart_files/figure-latex/storeSizeBoxPlot-1}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## box plot to show the summary statistics of the Type of Stores and their sizes}
-\KeywordTok{ggplot}\NormalTok{(}\DataTypeTok{data=}\NormalTok{stores, }
-       \KeywordTok{aes}\NormalTok{(}\DataTypeTok{x=}\NormalTok{Type, }\DataTypeTok{y=}\NormalTok{Size, }\DataTypeTok{fill=}\NormalTok{Type) ) +}\StringTok{ }
-\StringTok{  }\KeywordTok{geom_boxplot}\NormalTok{(}\DataTypeTok{outlier.shape =} \DecValTok{15}\NormalTok{, }\DataTypeTok{outlier.size =} \DecValTok{4}\NormalTok{) +}
-\StringTok{  }\NormalTok{## to show how the individual store sizes are distributed}
-\StringTok{  }\KeywordTok{geom_jitter}\NormalTok{() +}
-\StringTok{  }\KeywordTok{scale_y_continuous}\NormalTok{( }\DataTypeTok{name=}\StringTok{"Store Size"} \NormalTok{) +}\StringTok{ }
-\StringTok{  }\KeywordTok{scale_fill_brewer}\NormalTok{( }\DataTypeTok{name =} \StringTok{"Store Type"} \NormalTok{, }\DataTypeTok{palette =} \StringTok{"Dark2"}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/storeSizeBoxPlot-1}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Standard Deviation of each type of Store}
-\KeywordTok{tapply}\NormalTok{( stores$Size , stores$Type , sd )}
-\end{Highlighting}
-\end{Shaded}
+Here are the summary statistics for each type of store:
 
 \begin{verbatim}
-##         A         B         C 
-## 49392.621 32371.138  1304.145
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Median of each Type of Store}
-\KeywordTok{tapply}\NormalTok{( stores$Size , stores$Type , median )}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-##      A      B      C 
-## 202406 114533  39910
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Mean of each type of Store}
-\KeywordTok{tapply}\NormalTok{( stores$Size , stores$Type , mean )}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-##         A         B         C 
-## 177247.73 101190.71  40541.67
+##   StoreTypeSD StoreTypeMedian StoreTypeMean StoreTypeMin StoreTypeMax  Range
+## A   49392.621          202406     177247.73        39690       219622 179932
+## B   32371.138          114533     101190.71        34875       140167 105292
+## C    1304.145           39910      40541.67        39690        42988   3298
 \end{verbatim}
 
 \subsubsection{The Features Dataset
 (features)}\label{the-features-dataset-features}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Structure of features dataset}
-\KeywordTok{str}\NormalTok{(features)}
-\end{Highlighting}
-\end{Shaded}
+The structure of the features data set is given below:
 
 \begin{verbatim}
 ## 'data.frame':    8190 obs. of  12 variables:
-##  $ Store       : int  1 1 1 1 1 1 1 1 1 1 ...
-##  $ Date        : Factor w/ 182 levels "2010-02-05","2010-02-12",..: 1 2 3 4 5 6 7 8 9 10 ...
+##  $ Store       : Factor w/ 45 levels "1","2","3","4",..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Date        : Date, format: "2010-02-05" "2010-02-12" ...
 ##  $ Temperature : num  42.3 38.5 39.9 46.6 46.5 ...
 ##  $ Fuel_Price  : num  2.57 2.55 2.51 2.56 2.62 ...
 ##  $ MarkDown1   : num  NA NA NA NA NA NA NA NA NA NA ...
@@ -766,17 +510,8 @@ function of its size. The following boxplot indicates this:
 ##  $ IsHoliday   : logi  FALSE TRUE FALSE FALSE FALSE FALSE ...
 \end{verbatim}
 
-There are 182 dates in total. This data set is relevant for both the
-train and the test data set.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Changing the Date from "Format" type to "Date" Type }
-\NormalTok{features$Date <-}\StringTok{ }\KeywordTok{as.Date}\NormalTok{(features$Date)}
-\NormalTok{## Summary Statistics of Features Dataset}
-\KeywordTok{summary}\NormalTok{(features)}
-\end{Highlighting}
-\end{Shaded}
+This data set is relevant for both the train and the test data set.
+Summary statistics of this data set is given below:
 
 \begin{verbatim}
 ##      Store         Date             Temperature       Fuel_Price   
@@ -807,45 +542,15 @@ train and the test data set.
 
 The features data set has missing variables for Markdown1-5, CPI \&
 Unemployment. We will discuss how we can treat these missing values
-below
+below.
 
-\paragraph{Handling Consumer Price Index Missing
-Values}\label{handling-consumer-price-index-missing-values}
+\paragraph{Handling Consumer Price Index (CPI) Missing
+Values}\label{handling-consumer-price-index-cpi-missing-values}
 
 To undertstand how the missing values are distributed in the features
 dataset let us first plot a heat map.
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Calculating the mean CPI Across all the stores by Date}
-\NormalTok{meanCPIAcrossStores <-}\StringTok{ }\KeywordTok{tapply}\NormalTok{( features$CPI , features$Date , }\DataTypeTok{FUN =} \NormalTok{mean )}
-\NormalTok{## Converting it into Data Frame}
-\NormalTok{meanCPIAcrossStoresDF <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{( meanCPIAcrossStores )}
-\NormalTok{## Adding the row Data to the data frame to see the trend}
-\NormalTok{meanCPIAcrossStoresDF$Date <-}\StringTok{ }\KeywordTok{as.Date}\NormalTok{( }\KeywordTok{rownames}\NormalTok{( meanCPIAcrossStoresDF ) )}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## heatmap to undersatnd where CPI is missing}
-\NormalTok{missingCPIHeatMap <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{( features , }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{Date, }\DataTypeTok{y =} \NormalTok{Store)) +}\StringTok{ }
-\StringTok{  }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{fill =} \NormalTok{CPI)) +}
-\StringTok{  }\KeywordTok{scale_fill_gradient}\NormalTok{(}\DataTypeTok{low=}\StringTok{"yellow"}\NormalTok{, }\DataTypeTok{high=}\StringTok{"red"} \NormalTok{, }\DataTypeTok{labels =} \NormalTok{comma , }\DataTypeTok{name=}\StringTok{"CPI"}\NormalTok{) +}
-\StringTok{  }\KeywordTok{scale_y_continuous}\NormalTok{(}\DataTypeTok{name=}\StringTok{"Store"}\NormalTok{) +}
-\StringTok{  }\KeywordTok{theme}\NormalTok{( }\DataTypeTok{legend.position =} \StringTok{"none"} \NormalTok{)}
-\NormalTok{## trend of Average CPI Across All Stores}
-\NormalTok{avgCPiIndexTrend <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{( meanCPIAcrossStoresDF , }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{Date, }\DataTypeTok{y =} \NormalTok{meanCPIAcrossStores ) ) +}\StringTok{ }
-\StringTok{  }\KeywordTok{geom_line}\NormalTok{() +}
-\StringTok{  }\KeywordTok{scale_y_continuous}\NormalTok{(}\DataTypeTok{name=}\StringTok{"MEAN CPI Across All Stores"} \NormalTok{) +}
-\StringTok{  }\NormalTok{## Adding a linear model to view the trend}
-\StringTok{  }\KeywordTok{stat_smooth}\NormalTok{( }\DataTypeTok{method =} \StringTok{"lm"} \NormalTok{)}
-\NormalTok{## putting the graphs into a grid}
-\KeywordTok{grid.arrange}\NormalTok{(missingCPIHeatMap , avgCPiIndexTrend , }\DataTypeTok{ncol =} \DecValTok{1} \NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/CPIMissingHeatMap-1}
+\includegraphics[width=450px]{PredictingWeeklySalesAtWalmart_files/figure-latex/CPIMissingHeatMap-1}
 
 The following features stand out:
 
@@ -857,82 +562,30 @@ The following features stand out:
   There is high variation of CPI between different stores
 \item
   But the variation over time is minimal - as the colors on the heat map
-  suggest - which stays constant
+  suggest
 \item
-  Taking an average CPI across all stores, we notice an upward trend
+  Taking an average CPI across all stores, we notice an upward linear
+  trend
 \end{itemize}
 
-It is not feasible to fetch the missing CPI Value for anonymised stores,
-therefore, we will build a linear model to predict the CPI Value for the
-missing values.
+It is not feasible to fetch the missing CPI Value for anonymised store
+data, therefore, we built a linear model (with
+R\textsuperscript{2}=\texttt{0.9987599}) to predict the CPI Value for
+the missing data. The following graph shows how the prediction has
+followed the linear trend depicted earlier.
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## CPI MEAN, MAX MIN & Range tabulated into a Data Frame}
-\NormalTok{CPI_Mean <-}\StringTok{ }\KeywordTok{tapply}\NormalTok{( features$CPI , features$Store , }\DataTypeTok{FUN =} \NormalTok{mean , }\DataTypeTok{na.rm=} \NormalTok{T )}
-\NormalTok{CPI_Max <-}\StringTok{ }\KeywordTok{tapply}\NormalTok{( features$CPI , features$Store , }\DataTypeTok{FUN =} \NormalTok{mean , }\DataTypeTok{na.rm=} \NormalTok{T )}
-\NormalTok{CPI_Min <-}\StringTok{ }\KeywordTok{tapply}\NormalTok{( features$CPI , features$Store , }\DataTypeTok{FUN =} \NormalTok{mean , }\DataTypeTok{na.rm=} \NormalTok{T )}
-\NormalTok{CPI_DF <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{( CPI_Mean , CPI_Max , CPI_Min )}
-\NormalTok{CPI_DF$Range <-}\StringTok{ }\NormalTok{CPI_DF$CPI_Max -}\StringTok{ }\NormalTok{CPI_DF$CPI_Min }
-\NormalTok{## Checking if there is a difference between Max and Min}
-\NormalTok{## - if no change then no rows}
-\NormalTok{CPI_DF[ CPI_DF$Range !=}\StringTok{ }\DecValTok{0} \NormalTok{,]}
-\end{Highlighting}
-\end{Shaded}
+\includegraphics[width=450px]{PredictingWeeklySalesAtWalmart_files/figure-latex/predictingCPIValues-1}
 
-\begin{verbatim}
-## [1] CPI_Mean CPI_Max  CPI_Min  Range   
-## <0 rows> (or 0-length row.names)
-\end{verbatim}
+\paragraph{Handling Unemployment Missing
+Values}\label{handling-unemployment-missing-values}
 
-While checking if there was any variation for CPI, we find that there
-are no rows. This indicates that there is no variation in CPI and we can
-confidently impute the missing values of CPI to each store's specific
-CPI.
+Similar to CPI index, Unemployment data is missing for the same data
+range. We will use a similar technique to predict Unemployment.
+Unemployment has a negative linear trend with respect to time. The
+multi-linear regression predictor for Unemployment has an
+R\textsuperscript{2} = \texttt{0.9376545}.
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Removing CPI Columns not needed anymore}
-\NormalTok{CPI_DF$CPI_Min =}\StringTok{ }\NormalTok{CPI_DF$CPI_Max =}\StringTok{ }\NormalTok{CPI_DF$Range =}\StringTok{ }\OtherTok{NULL}
-\NormalTok{## Creating Store Column with the RowNAME}
-\NormalTok{CPI_DF$Store <-}\StringTok{ }\KeywordTok{as.integer}\NormalTok{( }\KeywordTok{rownames}\NormalTok{( CPI_DF ) )}
-\NormalTok{## Imputing CPI}
-\NormalTok{## merging the dataframes by Store}
-\NormalTok{features1 <-}\StringTok{ }\KeywordTok{merge}\NormalTok{( features , CPI_DF , }\DataTypeTok{by=}\StringTok{"Store"} \NormalTok{)}
-\NormalTok{## removing old CPI Column}
-\NormalTok{features1$CPI =}\StringTok{ }\OtherTok{NULL}
-\NormalTok{## Renaming CPI_Mean to CPI - it is the last column in the data frame}
-\KeywordTok{colnames}\NormalTok{( features1 )[ }\KeywordTok{ncol}\NormalTok{( features1 ) ] <-}\StringTok{ "CPI"}
-\end{Highlighting}
-\end{Shaded}
-
-Let us visually verify if CPI data was imputed correctly
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## checking if the imputation was done correctly}
-\NormalTok{newCPIHeatMap <-}\StringTok{ }\KeywordTok{ggplot}\NormalTok{( features1 , }\KeywordTok{aes}\NormalTok{(}\DataTypeTok{x =} \NormalTok{Date, }\DataTypeTok{y =} \NormalTok{Store)) +}\StringTok{ }
-\StringTok{  }\KeywordTok{geom_tile}\NormalTok{(}\KeywordTok{aes}\NormalTok{(}\DataTypeTok{fill =} \NormalTok{CPI)) +}
-\StringTok{  }\KeywordTok{scale_fill_gradient}\NormalTok{(}\DataTypeTok{low=}\StringTok{"yellow"}\NormalTok{, }\DataTypeTok{high=}\StringTok{"red"} \NormalTok{, }\DataTypeTok{labels =} \NormalTok{comma , }\DataTypeTok{name=}\StringTok{"CPI"}\NormalTok{) +}
-\StringTok{  }\KeywordTok{scale_y_continuous}\NormalTok{(}\DataTypeTok{name=}\StringTok{"Store"}\NormalTok{) +}
-\StringTok{  }\KeywordTok{theme}\NormalTok{( }\DataTypeTok{legend.position =} \StringTok{"none"} \NormalTok{)}
-\NormalTok{## arranging both the old and new graphs in a grid}
-\KeywordTok{grid.arrange}\NormalTok{( missingCPIHeatMap , newCPIHeatMap , }\DataTypeTok{ncol =} \DecValTok{1} \NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/plottingNewCPI-1}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## overwriting old features with features1 (with no missing values for CPI)}
-\NormalTok{features <-}\StringTok{ }\NormalTok{features1}
-\NormalTok{## removing unneccesary data elements}
-\KeywordTok{rm}\NormalTok{( CPI_DF , CPI_Max , CPI_Mean , CPI_Min , }
-    \NormalTok{features1 , newCPIHeatMap , missingCPIHeatMap ,}
-    \NormalTok{meanCPIAcrossStores , meanCPIAcrossStoresDF , avgCPiIndexTrend )}
-\end{Highlighting}
-\end{Shaded}
+\includegraphics[width=450px]{PredictingWeeklySalesAtWalmart_files/figure-latex/graphingUnemploymentPrediction-1}
 
 \subsubsection{The Test Dataset (test)}\label{the-test-dataset-test}
 
@@ -1106,7 +759,7 @@ We generate a heat map to study this interaction
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/heatmapStoreDept-1}
+\includegraphics[width=450px]{PredictingWeeklySalesAtWalmart_files/figure-latex/heatmapStoreDept-1}
 From the heat map we can draw the following broad conclusions:
 
 \begin{itemize}
@@ -1180,7 +833,7 @@ Store size (x-axis) to understand the relationship between them.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/storeTypeScatterBoxGrid-1}
+\includegraphics[width=450px]{PredictingWeeklySalesAtWalmart_files/figure-latex/storeTypeScatterBoxGrid-1}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1238,7 +891,7 @@ outlier when it's more than 3 Standard Deviations from the mean.
 From this we can hypothesize that the Type of store could be an
 important predictor of Weekly\_Sales.
 
-\subsubsection{3.3.3 Total Sales Per Week - Time
+\subsubsection{Total Sales Per Week - Time
 Series}\label{total-sales-per-week---time-series}
 
 We discuss here the effect holidays have on Total Sales of 45 Stores.
@@ -1261,27 +914,6 @@ We discuss here the effect holidays have on Total Sales of 45 Stores.
 \NormalTok{## Calculating the Total sales in Millions}
 \NormalTok{totalSalesPerWeekDataFrame$TotalSalesInMillion =}\StringTok{ }
 \StringTok{  }\NormalTok{totalSalesPerWeekDataFrame$TotalSales/}\DecValTok{1000000}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## function to handle lag}
-\NormalTok{## Since the in-built function in R to handle LAG is not working}
-\NormalTok{## x - vector that needs to be lagged}
-\NormalTok{## k - is the no of lags that need to be returned as a vector }
-\NormalTok{##   - may be positive or negative}
-\NormalTok{##   - it returns 0 instead of NA for the missing values}
-\NormalTok{## returns a vector contained the lagged data with padded 0s for missing data}
-\NormalTok{lagpad <-}\StringTok{ }\NormalTok{function(x, k) \{}
-  \NormalTok{if( k >}\StringTok{ }\DecValTok{0} \NormalTok{) \{}
-    \CommentTok{# It should actually be NA in the rep function}
-    \KeywordTok{c}\NormalTok{(}\KeywordTok{rep}\NormalTok{(}\DecValTok{0}\NormalTok{, k), x)[}\DecValTok{1} \NormalTok{:}\StringTok{ }\KeywordTok{length}\NormalTok{(x)] }
-  \NormalTok{\} else \{}
-    \CommentTok{# It should actually be NA in the rep function}
-    \KeywordTok{c}\NormalTok{(x[ (}\KeywordTok{abs}\NormalTok{(k)+}\DecValTok{1}\NormalTok{) :}\StringTok{ }\KeywordTok{length}\NormalTok{(x)] , }\KeywordTok{rep}\NormalTok{(}\DecValTok{0}\NormalTok{, }\KeywordTok{abs}\NormalTok{(k) ) )  }
-  \NormalTok{\}}
-\NormalTok{\}}
 \end{Highlighting}
 \end{Shaded}
 
@@ -1377,7 +1009,7 @@ We discuss here the effect holidays have on Total Sales of 45 Stores.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/plottingSalesPerWeek-1}
+\includegraphics[width=450px]{PredictingWeeklySalesAtWalmart_files/figure-latex/plottingSalesPerWeek-1}
 
 We can clearly see some trends here:
 
@@ -1598,7 +1230,7 @@ We can clearly see some trends here:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/plottingSubsetOfHolidays-1}
+\includegraphics[width=450px]{PredictingWeeklySalesAtWalmart_files/figure-latex/plottingSubsetOfHolidays-1}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1616,13 +1248,13 @@ We can clearly see some trends here:
 \end{Highlighting}
 \end{Shaded}
 
-\subsubsection{3.3.4 Store-Department-wise Sales per Week - Time
+\subsubsection{Store-Department-wise Sales per Week - Time
 Series}\label{store-department-wise-sales-per-week---time-series}
 
 To see a representation of the granularity of the data, we would like to
 plot all the data points of Weekly Sales vs Time (Week)
 
-\includegraphics[scale=.25]{allPoint-1}
+\includegraphics[scale=.3]{allPoint-1}
 
 While it is not easy to make sense of a graph with more than 400
 thousand data points, here are some salient features that stand out:
@@ -1640,18 +1272,6 @@ thousand data points, here are some salient features that stand out:
   Numbers (eg: 50th week of the year) may be an important predictor
   variable
 \end{itemize}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{## Function to calculate Week}
-\NormalTok{## date - the date for which the Week Number should be calculated}
-\NormalTok{## returns week Number}
-\NormalTok{weekNumber <-}\StringTok{ }\NormalTok{function( date ) \{}
-  \NormalTok{d1 <-}\StringTok{ }\KeywordTok{as.Date}\NormalTok{( }\KeywordTok{paste0}\NormalTok{( }\KeywordTok{year}\NormalTok{(date) , }\StringTok{"-01-01"} \NormalTok{) )}
-  \KeywordTok{as.integer}\NormalTok{((date-d1)/}\DecValTok{7}\NormalTok{)+}\DecValTok{1}
-\NormalTok{\}}
-\end{Highlighting}
-\end{Shaded}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1676,6 +1296,26 @@ we will develop in Section 5.
 \end{Shaded}
 
 \pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
 
 \section{4. Stage 2: Formal Statistical
 Inferences}\label{stage-2-formal-statistical-inferences}
@@ -1688,7 +1328,7 @@ higher during holiday weeks. We have seen earlier that visually it does
 appear that sales spike up during Thanksgiving and Christmas. We would
 like to statistically verify this.
 
-\subsubsection{4.1.1 The Hypotheses}\label{the-hypotheses}
+\subsubsection{The Hypotheses}\label{the-hypotheses}
 
 Let us state our Hypotheses:
 
@@ -1821,7 +1461,7 @@ We select a size of 2500 which is less than 10\% of Hyp\_Holiday.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/visualizingTheSamplesCollected-1}
+\includegraphics[width=450px]{PredictingWeeklySalesAtWalmart_files/figure-latex/visualizingTheSamplesCollected-1}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1904,12 +1544,12 @@ rejected. Holiday weeks do not cause sales to spike up.
 \subsubsection{4.1.6 Real World
 Application}\label{real-world-application}
 
-However, in graphs drawn in section 3.3.3 we were presented with another
-reality. We saw the spike in sales during holiday season - Thanksgiving
-and Christmas. One will recognize on close examination of the graphs
-that most of the sales spike happened 1 week before the holiday week.
-Sales during the holiday week was mostly on the decline from the high
-sales peak from the week before.
+However, in graphs drawn in the section \emph{`Total Sales Per Week'} we
+were presented with another reality. We saw the spike in sales during
+holiday season - Thanksgiving and Christmas. One will recognize on close
+examination of the graphs that most of the sales spike happened 1 week
+before the holiday week. Sales during the holiday week was mostly on the
+decline from the high sales peak from the week before.
 
 Therefore, statistically, Holiday Week Sales are not very different from
 that of non-holiday week sales. However, if we consider Holiday Season
@@ -1931,8 +1571,8 @@ holiday season could be interesting to study.
 
 For the purposes of our study we will take 2 weeks before and after as a
 part of the holiday season. We will consider only Thanksgiving \&
-Christmas - from the graph in Section 3.3.3 the other holidays don't
-influence the sales as much.
+Christmas - from the graph in section \emph{`Total Sales Per Week'} the
+other holidays don't influence the sales as much.
 
 \subsubsection{4.2.1 The Hypotheses}\label{the-hypotheses-1}
 
@@ -2069,7 +1709,7 @@ We select a size of 5000 which is less than 10\% of Hyp\_Holiday.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics[width=300px]{PredictingWeeklySalesAtWalmart_files/figure-latex/visualizingTheSamplesCollected2-1}
+\includegraphics[width=450px]{PredictingWeeklySalesAtWalmart_files/figure-latex/visualizingTheSamplesCollected2-1}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2151,8 +1791,9 @@ rejected. Holiday seasons do cause a spike in sales.
 \subsubsection{4.2.6 Real World
 Application}\label{real-world-application-1}
 
-This confirms the what we visually depicted in Section 3.3.3 regarding
-sales spiking up during Christmas and Thanksgiving.
+This confirms the what we visually depicted in section \emph{`Total
+Sales Per Week'} regarding sales spiking up during Christmas and
+Thanksgiving.
 
 \pagebreak
 
@@ -2160,6 +1801,26 @@ sales spiking up during Christmas and Thanksgiving.
 Figures?}\label{do-bigger-stores-contribute-to-higher-sales-figures}
 
 \pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
 \# 5. Stage 3: Linear Regression: Predicting Weekly\_Sales
 
 \pagebreak
@@ -2192,11 +1853,55 @@ Figures?}\label{do-bigger-stores-contribute-to-higher-sales-figures}
 \end{Shaded}
 
 \begin{verbatim}
-## [1] "features"                 "lagpad"                  
-## [3] "standardError"            "stores"                  
-## [5] "test"                     "testStoresFeaturesMerge" 
-## [7] "train"                    "trainStoresFeaturesMerge"
-## [9] "weekNumber"
+##  [1] "avgCPiIndexTrend"                        
+##  [2] "avgUnemploymentIndexTrend"               
+##  [3] "boxplotStoreSize"                        
+##  [4] "cpiPredictor"                            
+##  [5] "days"                                    
+##  [6] "Description"                             
+##  [7] "features"                                
+##  [8] "features1"                               
+##  [9] "features2"                               
+## [10] "Holiday_Sample"                          
+## [11] "holidayDateTableDataFrame"               
+## [12] "Hyp_Holiday"                             
+## [13] "Hyp_NotHoliday"                          
+## [14] "lagpad"                                  
+## [15] "Log_Weekly_Sales"                        
+## [16] "meanCPIAcrossStores"                     
+## [17] "meanCPIAcrossStoresDF"                   
+## [18] "meanUnemploymentAcrossStores"            
+## [19] "meanUnemploymentAcrossStoresDF"          
+## [20] "missingCPIHeatMap"                       
+## [21] "ndiff"                                   
+## [22] "newAvgUnemploymentIndexTrend"            
+## [23] "newUnemploymentHeatMap"                  
+## [24] "NotHoliday_Sample"                       
+## [25] "oldUnemploymentData"                     
+## [26] "scatterPlotStoreSize"                    
+## [27] "standardError"                           
+## [28] "storeDeptTotalSalesDataFrame"            
+## [29] "stores"                                  
+## [30] "test"                                    
+## [31] "testStoresFeaturesMerge"                 
+## [32] "totalSalesPerWeek"                       
+## [33] "totalSalesPerWeekDataFrame"              
+## [34] "totalSalesPerWeekDataFrameDuringHolidays"
+## [35] "train"                                   
+## [36] "train0"                                  
+## [37] "trainStoresFeaturesMerge"                
+## [38] "trainStoresMerge"                        
+## [39] "unemploymentPredictor"                   
+## [40] "Weekly_Sales"                            
+## [41] "weeklySalesHist"                         
+## [42] "weekNumber"
 \end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# removing all the data from memory}
+\KeywordTok{rm}\NormalTok{( }\DataTypeTok{list =} \KeywordTok{ls}\NormalTok{() )}
+\end{Highlighting}
+\end{Shaded}
 
 \end{document}

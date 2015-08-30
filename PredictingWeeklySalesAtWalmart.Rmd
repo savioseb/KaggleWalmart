@@ -11,6 +11,7 @@ output:
     toc_depth: 3
   html_document:
     keep_md: yes
+    number_sections: yes
     theme: cerulean
     toc: yes
 ---
@@ -20,11 +21,67 @@ output:
 # Setting up the R Markdown Report
 # echo & include is set to false because I do not want this on the report
 # enabling cache so we don't have to run the code everytime
-knitr::opts_chunk$set(cache=TRUE, out.width='300px' , dpi=200 )  
+knitr::opts_chunk$set(cache=TRUE, out.width='450px' , dpi=200 )  
 # width of the report & to prevent Scientific notations for large numbers
 options(width=80 , scipen=10000)
 ```
 
+```{r librariesUsed, include=FALSE}
+# Grammar of Graphics Plotting Library
+library(ggplot2)
+# To use 'melt'
+library(reshape2)
+# to enable commas in graphs
+library(scales)
+# to get the month number from date variable
+library(lubridate)
+# to calculate Kurtosis
+library(e1071)
+# to be able to plot in grids
+library(grid)
+# to be able to plot in grids
+library(gridExtra)
+```
+
+```{r standardErrorFunctionDeclared, echo=FALSE}
+# Functions used in this Project
+# Function to calculate the Standard Error
+# x: the vector of numerical values
+# returns the standard error of the vector
+standardError <- function( x ) {
+  sd( x )/sqrt( length( x ) )
+}
+
+```
+
+```{r lagfunction, echo=FALSE}
+## function to handle lag
+## Since the in-built function in R to handle LAG is not working
+## x - vector that needs to be lagged
+## k - is the no of lags that need to be returned as a vector 
+##   - may be positive or negative
+##   - it returns 0 instead of NA for the missing values
+## returns a vector contained the lagged data with padded 0s for missing data
+lagpad <- function(x, k) {
+  if( k > 0 ) {
+    # It should actually be NA in the rep function
+    c(rep(0, k), x)[1 : length(x)] 
+  } else {
+    # It should actually be NA in the rep function
+    c(x[ (abs(k)+1) : length(x)] , rep(0, abs(k) ) )  
+  }
+}
+```
+
+```{r weekNumberCalFunc, echo=FALSE}
+# Function to calculate Week
+# date - the date for which the Week Number should be calculated
+# returns week Number
+weekNumber <- function( date ) {
+  d1 <- as.Date( paste0( year(date) , "-01-01" ) )
+  as.integer((date-d1)/7)+1
+}
+```
 
 \pagebreak
 \hfill \break
@@ -49,9 +106,19 @@ options(width=80 , scipen=10000)
 \hfill \break
 
 # Executive Summary
-Retail stores need to be able to predict sales forecasts for the future and study the effect how strategic offers affect sales, especially during holiday season. Since the number of days in holidays are limited, it becomes more challenging to be able to accurately predict how different aspects affect sales.
+Retail stores need to be able to predict sales forecasts for the future and study the effect of strategic offers and how they affect sales, especially during holiday season. Since the number of days in holidays are limited, it becomes more challenging to be able to accurately predict how different aspects affect sales.
 
-This report will focus on a Walmart Data set that has Department-wise Weekly Sales of 45 Walmart stores. It will attempt to create a predictive model and also discuss the extent to which different factors affect the sales.
+Businesses are trying to leverage as much as possible to gain marketshare and improve bottomline. It is imperative to be able to know how one variable affects the other and what is the degree of change.
+
+This report specifically addresses the question of how holiday markdowns, Consumer Price Index (CPI), Fuel Price & Temperature affect the weekly sales at Walmart.
+
+This report will focus on a Walmart Data set that has Department-wise Weekly Sales of 45 anonymized Walmart stores. It will attempt to create a predictive model and also discuss the extent to which different factors affect the sales.
+
+Salient features of the data set:
+
+* Over 400 Thousand data points for training and over 100 thousand data points for testing predictions
+* Missing data exist - they need to be imputed values systematically to ensure that the model is good
+* Weekly sales data is highly skewed to the right - adding an extra level of complexity
 
 \pagebreak
 \hfill \break
@@ -146,45 +213,6 @@ The four holidays fall in the following weeks in the data set:
 * Thanksgiving: 26-Nov-10, 25-Nov-11, 23-Nov-12, 29-Nov-13
 * Christmas: 31-Dec-10, 30-Dec-11, 28-Dec-12, 27-Dec-13
 
-### Ingesting the Data
-```{r ingestTrain}
-# Ingesting the data from the Data folder: Training Dataset
-train <- read.csv("Data/train.csv")
-```
-```{r ingestStores}
-# Ingesting the data from the Data folder: Stores Dataset
-stores <- read.csv("Data/stores.csv")
-```
-```{r ingestFeatures}
-# Ingesting the data from the Data folder: features Dataset
-features <- read.csv("Data/features.csv")
-```
-
-```{r ingestTest}
-# Ingesting the data from the Data folder: testing Dataset
-test <- read.csv("Data/test.csv")
-```
-
-## R Libraries Used
-The following libraries are used in this report:
-
-```{r librariesUsed}
-# Grammar of Graphics Plotting Library
-library(ggplot2)
-# To use 'melt'
-library(reshape2)
-# to enable commas in graphs
-library(scales)
-# to get the month number from date variable
-library(lubridate)
-# to calculate Kurtosis
-library(e1071)
-# to be able to plot in grids
-library(grid)
-# to be able to plot in grids
-library(gridExtra)
-```
-
 
 \pagebreak
 \hfill \break
@@ -208,130 +236,114 @@ library(gridExtra)
 \hfill \break
 \hfill \break
 
-# Stage 1: Data Exploration and Preparation
+# Data Exploration and Preparation (Stage 1)
 
 ## Summary Statististics
 
 ### The Training Dataset (train)
+```{r ingestTrain, include=FALSE}
+# Ingesting the data from the Data folder: Training Dataset
+train <- read.csv("Data/train.csv")
+```
+```{r convertingDateTrainDataset, include=FALSE}
+# Changing the Date from "Format" type to "Date" Type 
+train$Date <- as.Date(train$Date)
+# Changing Store from int to factor
+train$Store <- as.factor(train$Store)
+# Changing Dept from int to factor
+train$Dept <- as.factor(train$Dept)
+```
+
 This is the structure of the dataset
 ```{r trainDatasetStr, echo=FALSE}
 # Structure of Train Dataset
 str(train)
 ```
 
-<BR>
-
-There are 143 dates in total.
-
-```{r convertingDateTrainDataset, include=FALSE}
-## Changing the Date from "Format" type to "Date" Type 
-train$Date <- as.Date(train$Date)
-```
-
+Summary statistics for the train data set is given below:
 ```{r trainDatasetSummary, echo=FALSE}
-## Getting the summary of the Data
+# Getting the summary of the Data
 summary(train)
 ```
 
-<BR>
 There is no missing data in the data set.
 
-As discussed in the Introduction, this report contains data of 45 stores - represented by Store. There are a total of 99 stores in all.
+As discussed in the Introduction, this report contains data of 45 stores - represented by Store. There are a total of 81 departments in all identified between 1 to 99.
 
 The starting date for training data set is ```r min(train$Date)```. It starts on a ```r weekdays(min(train$Date) )```. The last date recorded in the data set is ```r max(train$Date)```, which is also a ```r weekdays( max( train$Date ) )```. There are ```r days<- as.numeric( max( train$Date )  - min(train$Date) ); days``` days between them - so the data consists of a total of ```r days/7 + 1``` weeks of data.
 
 ```{r include=FALSE}
+# removing from memory
 rm(days)
 ```
-
 
 #### Heavily Right-Skewed Weekly Sales
 It is interesting to note that for some departments the <code>Weekly_Sales</code> are **negative**. Returns and special offers cause these negative sales figures.
 
-The **Standard Deviation** for <code>Weekly_Sales</code> is ```r round( sd(train$Weekly_Sales) , 2)```. The **mean** is ```r round( mean(train$Weekly_Sales) , 2 )``` and **median** is ```r median(train$Weekly_Sales)```. The mean and the median are very far apart, indicating that the data is skewed - in this case, extremely **right-skewed**. The following histogram depicts this relationship - where you can clearly observe the long tail towards the right making it extremely right-skewed.
-
-
-```{r weeklySalesSkew, echo=FALSE}
-## plotting Weekly_Sales with binwidth of 5000. 
-## Mean and median are far from each other
-ggplot( train, aes( x = Weekly_Sales ) ) +
-  geom_histogram(binwidth=5000 ) + 
-  ## Vertical line indicating the mean value
-  geom_vline( aes( xintercept = mean( Weekly_Sales ) ), color="red" ) +
-  scale_y_continuous( "Frequency of Occurance" ) +
-  scale_x_continuous( "Weekly Sales" )
-```
-
+The **Standard Deviation** for <code>Weekly_Sales</code> is ```r round( sd(train$Weekly_Sales) , 2)```. The **mean** is ```r round( mean(train$Weekly_Sales) , 2 )``` and **median** is ```r median(train$Weekly_Sales)```. The mean and the median are very far apart, indicating that the data is skewed - in this case, extremely **right-skewed**.
 
 Since the data is highle skewed, it would be more appropriate use log transformation to remove the skew to make make the data fit the assumptions of inferential statistics. But before we do that, we need to take care of Negative and Zero Values in the data.
 
 #### Dealing with Negative and Zero Weekly Sales
-Since Log transformation of negative numbers yeild <code>NA</code> and log transformation of 0 is a negative infinity value, we need to handle these values appropriately.
-
-Let us first find the total count of numbers that fit this description:
-
-
-```{r dealingWithNegative0WeeklySales}
-## subsetting the values that are negative and 0
+```{r dealingWithNegative0WeeklySales, echo=FALSE}
+# subsetting the values that are negative and 0
 train0 <- subset( train, train$Weekly_Sales <= 0 )
-### Printing the first 5 rows of the data with negative and 0 values
-head( train0 )
 ```
+There are ```r nrow(train0)``` rows that are zero or negative.
 
+Since Log transformation of negative numbers yeild <code>NA</code> and log transformation of <code>0</code> is a negative infinity value(<code>-Inf</code>), we need to handle these values appropriately.
 
-* The data set represents a paltry ```r paste0( round( nrow(train0)/nrow( train )*100 , 1) , "%" )``` of the full dataset - it has ```r nrow( train0 )``` observations
+* The data set represents a paltry ```r paste0( round( nrow(train0)/nrow( train )*100 , 1) , "%" )``` of the full dataset
 * The absolute sum of this <code>Weekly_Sales</code> in this filtered data set is only ```r paste0( round( abs(sum( train0$Weekly_Sales ) ) / sum(train$Weekly_Sales ) *100 , 3 ) , "%" )``` of the overall sum of <code>Weekly_Sales</code> 
 * The absolute maximum value of this dataset is ```r abs( min( train0$Weekly_Sales ) )```
 
 Owing to the reasons mentioned above, it would be good to remove these observations from the dataset before continuting to do a Log Transoformation of <code>Weekly_Sales</code>.
 
-
 ```{r include=FALSE, echo=FALSE}
+# remove train0
 rm( train0 )
 ```
-
 
 #### Log Transformation of Weekly Sales
 
-```{r logtransformation}
-## Create subset of train data set
+```{r logtransformation, echo=FALSE}
+# Create subset of train data set
 train <- subset( train , train$Weekly_Sales > 0 )
-## Make Log Transformation for Weekly_Sales
+# Make Log Transformation for Weekly_Sales
 train$Log_Weekly_Sales <- log(train$Weekly_Sales)
-## remove train0
-rm( train0 )
-## summary statistics of Weekly_Sales and Log_Weekly_Sales
-summary(train$Weekly_Sales)
-summary( train$Log_Weekly_Sales )
 ```
 
-We notice that the Median and the mean are more closer to teach other. The histogram below shows that the data is less skewed than earlier:
-
-```{r logWeeklySalesHistogram}
-## plotting the log( Weekly_Sales ) histogram
-ggplot( train, aes( x = Log_Weekly_Sales ) ) +
+The histogram below shows the the change:
+```{r weeklySalesSkew, echo=FALSE}
+# plotting Weekly_Sales with binwidth of 5000. 
+# Mean and median are far from each other
+weeklySalesHist <- ggplot( train, aes( x = Weekly_Sales ) ) +
+  geom_histogram(binwidth=5000 ) + 
+  # Vertical line indicating the mean value
+  geom_vline( aes( xintercept = mean( Weekly_Sales ) ), color="red" ) +
+  scale_y_continuous( "Frequency of Occurance" ) +
+  scale_x_continuous( "Weekly Sales" )
+```
+```{r logWeeklySalesHistogram, echo=FALSE}
+# plotting the log( Weekly_Sales ) histogram
+logWeeklySalesHist <- ggplot( train, aes( x = Log_Weekly_Sales ) ) +
   geom_histogram(binwidth=.2 ) + 
-  ## Vertical line indicating the mean value
+  # Vertical line indicating the mean value
   geom_vline( aes( xintercept = mean( Log_Weekly_Sales ) ), color="red" ) +
   scale_y_continuous( "Frequency of Occurance" ) +
   scale_x_continuous( "log( Weekly_Sales )" )
+# arranging both the historgrams in a grid
+grid.arrange( weeklySalesHist , logWeeklySalesHist, nrow = 1 )
+# deleting the plots
+rm( weeklySalesHist , logWeeklySalesHist )
 ```
 
-The histogram is slightly **left-skewed**, but more normal than the previous distribution of <code>Weekly_Sales</code>.
+The <code>log(Weekly_Sales)</code> is slightly **left-skewed**, but more normal than the distribution of <code>Weekly_Sales</code>.
 
+Detailed summary statistics on weekly sales are given below:
 
-#### Detailed Summary Statistics of Weekly Sales
-```{r functionStandardError}
-## Function to calculate the Standard Error
-## x: the vector of numerical values
-## returns the standard error of the vector
-standardError <- function( x ) {
-  sd( x )/sqrt( length( x ) )
-}
-```
-
-```{r calculatingDetailedSummaryStatisticsOfWeekly_Sales}
-## Calculating Detailed Summary Statistics for Weekly_Sales
+```{r calculatingDetailedSummaryStatisticsOfWeekly_Sales, echo=FALSE}
+# Calculating Detailed Summary Statistics for Weekly_Sales
 Weekly_Sales <- c( 
   mean( train$Weekly_Sales ) ,
   standardError(  train$Weekly_Sales ) ,
@@ -348,9 +360,8 @@ Weekly_Sales <- c(
 )
 ```
 
-```{r calculatingDetailedSummaryStatisticsOfLog_Weekly_Sales}
-
-## Calculating Detailed Summary Statistics for Weekly_Sales
+```{r calculatingDetailedSummaryStatisticsOfLog_Weekly_Sales, echo=FALSE}
+# Calculating Detailed Summary Statistics for Weekly_Sales
 Log_Weekly_Sales <- c( 
   mean( train$Log_Weekly_Sales ) ,
   standardError(  train$Log_Weekly_Sales ) ,
@@ -367,8 +378,8 @@ Log_Weekly_Sales <- c(
 )
 ```
 
-```{r descriptionOfDefailedSummaryStatistics}
-## Row Headings of the Summary statistics
+```{r descriptionOfDefailedSummaryStatistics, echo=FALSE}
+# Row Headings of the Summary statistics
 Description <- c(
   "Mean",
   "Standard Error" ,
@@ -385,18 +396,18 @@ Description <- c(
 )
 ```
 
-```{r printingDetailedSummaryStatisticsTable}
-## Making a dataframe with the data
+```{r printingDetailedSummaryStatisticsTable, echo=FALSE}
+# Making a dataframe with the data
 Detailed_Summary_Statistics_on_Weekly_Sales <- 
   data.frame( 
     Description=Description , 
     Weekly_Sales = Weekly_Sales ,
     Log_Weekly_Sales = Log_Weekly_Sales
     )
-## printing out the detailed summary statistics 
+# printing out the detailed summary statistics 
 print( Detailed_Summary_Statistics_on_Weekly_Sales , row.names = F )
 
-## Removing intermediate data
+# Removing intermediate data
 rm( 
   Weekly_Sales ,  
   Log_Weekly_Sales , 
@@ -404,89 +415,118 @@ rm(
   Detailed_Summary_Statistics_on_Weekly_Sales )
 ```
 
-The **Kurtosis** value of <code>Log_Weekly_Sales</code> indicates that it is peaked - unimodal data.
-
+The **Kurtosis** value of <code>Log_Weekly_Sales</code> indicates that it is peaked data.
 
 ### The Stores Dataset (stores)
-```{r storesDatasetStr}
-## Structure of Stores Dataset
+```{r ingestStores, include=FALSE}
+# Ingesting the data from the Data folder: Stores Dataset
+stores <- read.csv("Data/stores.csv")
+```
+The structure of Stores Data Set is as follows:
+```{r storesDatasetStr, echo=FALSE}
+# Changing Store from int to Factor
+stores$Store <- as.factor( stores$Store)
+# Structure of Stores Dataset
 str(stores)
 ```
 
-```{r storesSummary}
-## summary Statistics of Stores dataset
+Summmary Statistics on the data are given below:
+```{r storesSummary, echo=FALSE}
+# summary Statistics of Stores dataset
 summary(stores)
 ```
 
-No missing data.
+There is no missing data. The stores are grouped into types, and it appears to be mostly a function of its size. The following boxplot indicates this:
 
-The stores are grouped into types, and it appears to be mostly a function of its size. The following boxplot indicates this:
-
-```{r storeSizeBoxPlot}
-## box plot to show the summary statistics of the Type of Stores and their sizes
+```{r storeSizeBoxPlot, echo=FALSE}
+# box plot to show the summary statistics of the Type of Stores and their sizes
 ggplot(data=stores, 
        aes(x=Type, y=Size, fill=Type) ) + 
   geom_boxplot(outlier.shape = 15, outlier.size = 4) +
-  ## to show how the individual store sizes are distributed
+  # to show how the individual store sizes are distributed
   geom_jitter() +
   scale_y_continuous( name="Store Size" ) + 
   scale_fill_brewer( name = "Store Type" , palette = "Dark2")
 ```
 
-```{r StoreSizeSummaryStatisticsBasedOnType}
-## Standard Deviation of each type of Store
-tapply( stores$Size , stores$Type , sd )
-## Median of each Type of Store
-tapply( stores$Size , stores$Type , median )
-## Mean of each type of Store
-tapply( stores$Size , stores$Type , mean )
+Here are the summary statistics for each type of store:
+
+```{r StoreSizeSummaryStatisticsBasedOnTypeSD, echo=FALSE, warning=FALSE}
+# Standard Deviation of each type of Store
+StoreTypeSD <- tapply( stores$Size , stores$Type , sd )
+# Median of each Type of Store
+StoreTypeMedian <- tapply( stores$Size , stores$Type , median )
+# Mean of each type of Store
+StoreTypeMean <- tapply( stores$Size , stores$Type , mean )
+# Min Size of each type of Store
+StoreTypeMin <- tapply( stores$Size , stores$Type , min )
+# Max Size of each type of Store
+StoreTypeMax <- tapply( stores$Size , stores$Type , max )
+# Making Dataframe
+StoreTypeSummaryStatistics <- data.frame(
+  StoreTypeSD , StoreTypeMedian , StoreTypeMean , StoreTypeMin , StoreTypeMax
+)
+# Calculating the range
+StoreTypeSummaryStatistics$Range <- StoreTypeMax-StoreTypeMin
+# Printing the Summary Statistic of the Type of Stores
+StoreTypeSummaryStatistics
+# Removing the elements from memory
+rm( StoreTypeSD , StoreTypeMedian , StoreTypeMean , 
+    StoreTypeMin , StoreTypeMax, StoreTypeSummaryStatistics )
 ```
 
 
 ### The Features Dataset (features)
+```{r ingestFeatures, include=FALSE}
+# Ingesting the data from the Data folder: features Dataset
+features <- read.csv("Data/features.csv")
+```
+The structure of the features data set is given below:
 
-```{r featuresDatasetStr}
-## Structure of features dataset
+```{r featuresDatasetStr, echo=FALSE}
+# Changing Store from int to Factor
+features$Store <- as.factor( features$Store)
+# Changing the Date from "Format" type to "Date" Type 
+features$Date <- as.Date(features$Date)
+# Structure of features dataset
 str(features)
 ```
 
-There are 182 dates in total. This data set is relevant for both the <code>train</code> and the <code>test</code> data set.
+This data set is relevant for both the <code>train</code> and the <code>test</code> data set. Summary statistics of this data set is given below:
 
-```{r featuresSummary}
-## Changing the Date from "Format" type to "Date" Type 
-features$Date <- as.Date(features$Date)
-## Summary Statistics of Features Dataset
+```{r featuresSummary, echo=FALSE}
+# Summary Statistics of Features Dataset
 summary(features)
 ```
 
-The <code>features</code> data set has missing variables for <code>Markdown1-5</code>, <code>CPI</code> & <code>Unemployment</code>. We will discuss how we can treat these missing values below
+The <code>features</code> data set has missing variables for <code>Markdown1-5</code>, <code>CPI</code> & <code>Unemployment</code>. We will discuss how we can treat these missing values below.
 
-#### Handling Consumer Price Index Missing Values
+#### Handling Consumer Price Index (CPI) Missing Values
 To undertstand how the missing values are distributed in the <code>features</code> dataset let us first plot a heat map.
 
-```{r calculateMeanCPIAcrossAllStores}
-## Calculating the mean CPI Across all the stores by Date
+```{r calculateMeanCPIAcrossAllStores, include=FALSE}
+# Calculating the mean CPI Across all the stores by Date
 meanCPIAcrossStores <- tapply( features$CPI , features$Date , FUN = mean )
-## Converting it into Data Frame
+# Converting it into Data Frame
 meanCPIAcrossStoresDF <- data.frame( meanCPIAcrossStores )
-## Adding the row Data to the data frame to see the trend
+# Adding the date to the data frame to see the trend
 meanCPIAcrossStoresDF$Date <- as.Date( rownames( meanCPIAcrossStoresDF ) )
 ```
 
-```{r CPIMissingHeatMap, warning=FALSE}
-## heatmap to undersatnd where CPI is missing
+```{r CPIMissingHeatMap, warning=FALSE, echo=FALSE}
+# heatmap to undersatnd where CPI is missing
 missingCPIHeatMap <- ggplot( features , aes(x = Date, y = Store)) + 
   geom_tile(aes(fill = CPI)) +
   scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
-  scale_y_continuous(name="Store") +
-  theme( legend.position = "none" )
-## trend of Average CPI Across All Stores
+  scale_y_discrete(name="Store") +
+  theme( legend.position = "none" , axis.text.y= element_blank() )
+# trend of Average CPI Across All Stores
 avgCPiIndexTrend <- ggplot( meanCPIAcrossStoresDF , aes(x = Date, y = meanCPIAcrossStores ) ) + 
   geom_line() +
-  scale_y_continuous(name="MEAN CPI Across All Stores" ) +
-  ## Adding a linear model to view the trend
+  scale_y_continuous(name="mean(CPI)" ) +
+  # Adding a linear model to view the trend
   stat_smooth( method = "lm" )
-## putting the graphs into a grid
+# putting the graphs into a grid
 grid.arrange(missingCPIHeatMap , avgCPiIndexTrend , ncol = 1 )
 ```
 
@@ -494,67 +534,163 @@ The following features stand out:
 
 * Data for CPI is missing a little after mid-2013
 * There is high variation of CPI between different stores
-* But the variation over time is minimal - as the colors on the heat map suggest - which stays constant
-* Taking an average CPI across all stores, we notice an upward trend
+* But the variation over time is minimal - as the colors on the heat map suggest
+* Taking an average CPI across all stores, we notice an upward linear trend
 
-It is not feasible to fetch the missing CPI Value for anonymised stores, therefore, we will build a linear model to predict the CPI Value for the missing values.
-
-
-```{r CPIMeanMinMaxRangeCalculation}
-## CPI MEAN, MAX MIN & Range tabulated into a Data Frame
-CPI_Mean <- tapply( features$CPI , features$Store , FUN = mean , na.rm= T )
-CPI_Max <- tapply( features$CPI , features$Store , FUN = mean , na.rm= T )
-CPI_Min <- tapply( features$CPI , features$Store , FUN = mean , na.rm= T )
-CPI_DF <- data.frame( CPI_Mean , CPI_Max , CPI_Min )
-CPI_DF$Range <- CPI_DF$CPI_Max - CPI_DF$CPI_Min 
-## Checking if there is a difference between Max and Min
-## - if no change then no rows
-CPI_DF[ CPI_DF$Range != 0 ,]
+```{r buildingCPiPredictionModel, echo=FALSE}
+# creating a subset of features dataset without NA Values
+features1 <- subset( features , is.na( features$CPI ) == FALSE )
+# creating a subset of features dataset with NA Values
+features2 <- subset( features , is.na( features$CPI ) == TRUE )
+# Creating Linear regression model to predict CPI
+cpiPredictor <- lm( 
+  formula = 
+    CPI ~ 
+    Date + 
+    Store + 
+    IsHoliday , 
+  data = features1 )
 ```
+ 
+It is not feasible to fetch the missing CPI Value for anonymised store data, therefore, we built a linear model (with R^2^=```r summary(cpiPredictor)$r.squared```) to predict the CPI Value for the missing data. The following graph shows how the prediction has followed the linear trend depicted earlier.
 
-While checking if there was any variation for CPI, we find that there are no rows. This indicates that there is no variation in CPI and we can confidently impute the missing values of CPI to each store's specific CPI.
+```{r predictingCPIValues, echo=FALSE}
+# Predicting values for CPI to substitute the missing values
+features2$CPI <- predict( cpiPredictor,  newdata = features2 )
+# combining the 2 datasets
+features1 <- rbind( features1 , features2)
 
-```{r imputingCPI}
-## Removing CPI Columns not needed anymore
-CPI_DF$CPI_Min = CPI_DF$CPI_Max = CPI_DF$Range = NULL
-## Creating Store Column with the RowNAME
-CPI_DF$Store <- as.integer( rownames( CPI_DF ) )
-## Imputing CPI
-## merging the dataframes by Store
-features1 <- merge( features , CPI_DF , by="Store" )
-## removing old CPI Column
-features1$CPI = NULL
-## Renaming CPI_Mean to CPI - it is the last column in the data frame
-colnames( features1 )[ ncol( features1 ) ] <- "CPI"
-```
+# Calculating the mean CPI Across all the stores by Date
+meanCPIAcrossStores <- tapply( features1$CPI , features1$Date , FUN = mean )
+# Converting it into Data Frame
+meanCPIAcrossStoresDF <- data.frame( meanCPIAcrossStores )
+# Adding the date to the data frame to see the trend
+meanCPIAcrossStoresDF$Date <- as.Date( rownames( meanCPIAcrossStoresDF ) )
 
-Let us visually verify if CPI data was imputed correctly
-
-```{r plottingNewCPI}
-## checking if the imputation was done correctly
+# heatmap to check if CPI is correctly imputed
 newCPIHeatMap <- ggplot( features1 , aes(x = Date, y = Store)) + 
   geom_tile(aes(fill = CPI)) +
   scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
-  scale_y_continuous(name="Store") +
-  theme( legend.position = "none" )
-## arranging both the old and new graphs in a grid
-grid.arrange( missingCPIHeatMap , newCPIHeatMap , ncol = 1 )
+  scale_y_discrete(name="Store" ) +
+  theme( legend.position = "none" , axis.text.y= element_blank() )
+# trend of Average CPI Across All Stores
+avgCPiIndexTrend <- ggplot( meanCPIAcrossStoresDF , aes(x = Date, y = meanCPIAcrossStores ) ) + 
+  geom_line() +
+  scale_y_continuous(name="mean(CPI)" ) +
+  stat_smooth( method = "lm" )
+grid.arrange(newCPIHeatMap , avgCPiIndexTrend , ncol = 1 )
+
+# overwriting old features with features1 (with no missing values for CPI)
+features <- features1
+
+# removing variables not needed anymore
+rm( missingCPIHeatMap , avgCPiIndexTrend , meanCPIAcrossStores ,  
+    cpiPredictor , features1 , features2 , newCPIHeatMap )
 ```
 
+#### Handling Unemployment Missing Values
+```{r unemploymentPredictor, echo=FALSE}
+# mean unemployment across stores
+meanUnemploymentAcrossStores <- 
+  tapply( features$Unemployment , features$Date , FUN = mean )
+# Converting it into Data Frame
+meanUnemploymentAcrossStoresDF <- 
+  data.frame( meanUnemploymentAcrossStores )
+# Adding the date to the data frame to see the trend
+meanUnemploymentAcrossStoresDF$Date <- 
+  as.Date( rownames( meanUnemploymentAcrossStoresDF ) )
+
+# heatmap to undersatnd where Unemployment is missing
+oldUnemploymentData <- ggplot( features , aes(x = Date, y = Store)) + 
+  geom_tile(aes(fill = Unemployment)) +
+  scale_fill_gradient(
+    low="yellow", high="red" , labels = comma , name="Unemployment") +
+  scale_y_discrete(name="Store") +
+  theme( legend.position = "none" , axis.text.y= element_blank() )
+
+# trend of Average Unemployment Across All Stores
+avgUnemploymentIndexTrend <- 
+  ggplot( meanUnemploymentAcrossStoresDF , 
+          aes(x = Date, y = meanUnemploymentAcrossStores ) ) + 
+  geom_line() +
+  scale_y_continuous(name="mean(Unemployment)" ) +
+  stat_smooth( method = "lm" )
+
+# creating a subset of features dataset without NA Values
+features1 <- subset( features , is.na( features$Unemployment ) == FALSE )
+# creating a subset of features dataset with NA Values
+features2 <- subset( features , is.na( features$Unemployment ) == TRUE )
 
 
-```{r clearing memoryCPIData}
-## overwriting old features with features1 (with no missing values for CPI)
+# Creating Linear regression model to predict unemployment
+unemploymentPredictor <- lm( 
+  formula = 
+    Unemployment ~ 
+    Date + 
+    Store + 
+    IsHoliday +
+    month( Date ) + 
+    year( Date ) +
+    weekNumber( Date ) +
+    CPI , 
+  data = features1 )
+
+# Predicting values for CPI to substitute the missing values
+features2$Unemployment <- predict( unemploymentPredictor,  newdata = features2 )
+## combining the 2 datasets
+features1 <- rbind( features1 , features2)
+
+
+# mean unemployment across stores
+meanUnemploymentAcrossStores <- 
+  tapply( features1$Unemployment , features$Date , FUN = mean )
+# Converting it into Data Frame
+meanUnemploymentAcrossStoresDF <- 
+  data.frame( meanUnemploymentAcrossStores )
+# Adding the date to the data frame to see the trend
+meanUnemploymentAcrossStoresDF$Date <- 
+  as.Date( rownames( meanUnemploymentAcrossStoresDF ) )
+
+# heatmap to check if CPI is correctly imputed
+newUnemploymentHeatMap <- ggplot( features1 , aes(x = Date, y = Store)) + 
+  geom_tile( aes( fill = Unemployment ) ) +
+  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="Unemployment") +
+  scale_y_discrete(name="Store" ) +
+  theme( legend.position = "none" , axis.text.y= element_blank() )
+# trend of Average CPI Across All Stores
+newAvgUnemploymentIndexTrend <- 
+  ggplot( meanUnemploymentAcrossStoresDF , aes(x = Date, y = meanUnemploymentAcrossStores ) ) + 
+  geom_line() +
+  scale_y_continuous(name="mean(Unemployment)" ) +
+  stat_smooth( method = "lm" )
+```
+Similar to CPI index, Unemployment data is missing for the same data range. We will use a similar technique to predict Unemployment. Unemployment has a negative linear trend with respect to time. The multi-linear regression predictor for <code>Unemployment</code> has an R^2^ = ```r summary(unemploymentPredictor)$r.squared```.
+
+```{r graphingUnemploymentPrediction, echo=FALSE, warning=FALSE}
+# Arranging 4 graphs in a grid
+grid.arrange( 
+  oldUnemploymentData , avgUnemploymentIndexTrend , 
+  newUnemploymentHeatMap , newAvgUnemploymentIndexTrend , 
+  ncol = 2 , nrow = 2 )
+```
+
+```{r unemploymentExit, echo=FALSE, warning=FALSE}
+# replacing the new data into the variable
 features <- features1
-## removing unneccesary data elements
-rm( CPI_DF , CPI_Max , CPI_Mean , CPI_Min , 
-    features1 , newCPIHeatMap , missingCPIHeatMap ,
-    meanCPIAcrossStores , meanCPIAcrossStoresDF , avgCPiIndexTrend )
+# removing variables not needed anymore
+rm( oldUnemploymentData , avgUnemploymentIndexTrend , 
+    meanUnemploymentAcrossStores ,  meanUnemploymentAcrossStoresDF , 
+    unemploymentPredictor , features1 , features2 , newUnemploymentHeatMap, 
+    newAvgUnemploymentIndexTrend )
 ```
 
 
 
 ### The Test Dataset (test)
+```{r ingestTest, include=FALSE}
+# Ingesting the data from the Data folder: testing Dataset
+test <- read.csv("Data/test.csv")
+```
 
 ```{r testDatasetStr}
 ## Structure of test dataset
@@ -745,7 +881,7 @@ From the graph, we can notice a Type B Outlier. A value is considered an outlier
 
 From this we can hypothesize that the <code>Type</code> of store could be an important predictor of <code>Weekly_Sales</code>.
 
-### 3.3.3 Total Sales Per Week - Time Series
+### Total Sales Per Week - Time Series
 We discuss here the effect holidays have on Total Sales of 45 Stores.
 
 ```{r totalSalesTimeSeries}
@@ -768,24 +904,7 @@ totalSalesPerWeekDataFrame$TotalSalesInMillion =
 ```
 
 
-```{r lagfunction}
-## function to handle lag
-## Since the in-built function in R to handle LAG is not working
-## x - vector that needs to be lagged
-## k - is the no of lags that need to be returned as a vector 
-##   - may be positive or negative
-##   - it returns 0 instead of NA for the missing values
-## returns a vector contained the lagged data with padded 0s for missing data
-lagpad <- function(x, k) {
-  if( k > 0 ) {
-    # It should actually be NA in the rep function
-    c(rep(0, k), x)[1 : length(x)] 
-  } else {
-    # It should actually be NA in the rep function
-    c(x[ (abs(k)+1) : length(x)] , rep(0, abs(k) ) )  
-  }
-}
-```
+
 
 ```{r holidayList}
 ## Getting the holiday List
@@ -1082,7 +1201,7 @@ holidayDateTableDataFrame$IsHolidayDefined = NULL
 rm( totalSalesPerWeekDataFrame , totalSalesPerWeekDataFrameDuringHolidays )
 ```
 
-### 3.3.4 Store-Department-wise Sales per Week - Time Series
+### Store-Department-wise Sales per Week - Time Series
 To see a representation of the granularity of the data, we would like to plot all the data points of Weekly Sales vs Time (Week)
 
 ```{r allPoint, echo=FALSE}
@@ -1097,7 +1216,7 @@ To see a representation of the granularity of the data, we would like to plot al
 #  scale_y_continuous(name="Weekly Sales" )
 ```
 
-\includegraphics[scale=.25]{allPoint-1}
+\includegraphics[scale=.3]{allPoint-1}
 <IMAGE src="Images/allPoint-1.png" />
 
 While it is not easy to make sense of a graph with more than 400 thousand data points, here are some salient features that stand out:
@@ -1105,17 +1224,6 @@ While it is not easy to make sense of a graph with more than 400 thousand data p
 * Departments with the higher numbers (<code>Dept>=75</code>) have higher sales figures than the lower numbered departments (<code>Dept <=25</code>)
 * During Christmas we see a spike in a lower numbered department's sale
 * We see a repeating annual pattern. Possibly indicating that Week Numbers (eg: 50th week of the year) may be an important predictor variable
-
-
-```{r weekNumberFunction}
-## Function to calculate Week
-## date - the date for which the Week Number should be calculated
-## returns week Number
-weekNumber <- function( date ) {
-  d1 <- as.Date( paste0( year(date) , "-01-01" ) )
-  as.integer((date-d1)/7)+1
-}
-```
 
 ```{r makeWeekNumberMonthNumber}
 ## Adding the Week Number to the holidayDateTableDataFrame
@@ -1135,12 +1243,32 @@ rm( holidayDateTableDataFrame )
 ```
 
 \pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
 
 # 4. Stage 2: Formal Statistical Inferences
 ## 4.1 On Average, Do Holiday Weeks Spike Sales Up?
 We would like to investigate if the sales figures are statistically higher during holiday weeks. We have seen earlier that visually it does appear that sales spike up during Thanksgiving and Christmas. We would like to statistically verify this.
 
-### 4.1.1 The Hypotheses
+### The Hypotheses
 Let us state our Hypotheses:
 
 * <B>Null Hypothesis (H~0~)</B> : On average, there is no difference in weekly sales figures during holiday weeks. In other words, there is no statisically significant difference between  <code>Weekly_Sales</code> numbers between holiday weeks and non-holiday weeks
@@ -1243,7 +1371,7 @@ The **Null Hypothesis (H~0~)** is NOT rejected because the <code>pValue</code> i
 This imples that the Alternate Hypothesis (H~A~) is rejected. Holiday weeks do not cause sales to spike up.
 
 ### 4.1.6 Real World Application
-However, in graphs drawn in section 3.3.3 we were presented with another reality. We saw the spike in sales during holiday season - Thanksgiving and Christmas. One will recognize on close examination of the graphs that most of the sales spike happened 1 week before the holiday week. Sales during the holiday week was mostly on the decline from the high sales peak from the week before.
+However, in graphs drawn in the section *'Total Sales Per Week'* we were presented with another reality. We saw the spike in sales during holiday season - Thanksgiving and Christmas. One will recognize on close examination of the graphs that most of the sales spike happened 1 week before the holiday week. Sales during the holiday week was mostly on the decline from the high sales peak from the week before.
 
 Therefore, statistically, Holiday Week Sales are not very different from that of non-holiday week sales. However, if we consider Holiday Season sales, it may tell a different story. This will form the basis of our next Hypothesis test - on average do Thanksgiving and Christmas contribute to spike in sales?
 
@@ -1252,7 +1380,7 @@ Therefore, statistically, Holiday Week Sales are not very different from that of
 ## 4.2 On Average, Do Thanksgiving and Christmas Contribute to Sales Spikes?
 As stated in the previous section, we would like to verify the behavior of sales spiking up during Holiday seasons, rather than just the holidays themselves. As we noted in the previous section, the holiday week itself may be no different from the rest of the dataset, but the holiday season could be interesting to study.
 
-For the purposes of our study we will take 2 weeks before and after as a part of the holiday season. We will consider only Thanksgiving & Christmas - from the graph in Section 3.3.3 the other holidays don't influence the sales as much.
+For the purposes of our study we will take 2 weeks before and after as a part of the holiday season. We will consider only Thanksgiving & Christmas - from the graph in section *'Total Sales Per Week'* the other holidays don't influence the sales as much.
 
 ### 4.2.1 The Hypotheses
 Let us state our Hypotheses:
@@ -1359,13 +1487,33 @@ The **Null Hypothesis (H~0~)** is rejected because the <code>pValue</code> is mu
 This imples that the Alternate Hypothesis (H~A~) is NOT rejected. Holiday seasons do cause a spike in sales.
 
 ### 4.2.6 Real World Application
-This confirms the what we visually depicted in Section 3.3.3 regarding sales spiking up during Christmas and Thanksgiving.
+This confirms the what we visually depicted in section *'Total Sales Per Week'* regarding sales spiking up during Christmas and Thanksgiving.
 
 \pagebreak
 
 ## 4.3 Do Bigger Stores contribute to Higher Sales Figures?
 
 \pagebreak
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
+\hfill \break
 # 5. Stage 3: Linear Regression: Predicting Weekly_Sales
 
 \pagebreak
@@ -1375,5 +1523,7 @@ nrow(train)
 nrow(trainStoresFeaturesMerge)
 
 ls()
+# removing all the data from memory
+rm( list = ls() )
 ```
 

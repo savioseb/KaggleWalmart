@@ -4,28 +4,199 @@ library(reshape2)
 library(scales)
 library(lubridate)
 library(e1071)
-## to be able to plot in grids
+# to be able to plot in grids
 library(grid)
-## to be able to plot in grids
+# to be able to plot in grids
 library(gridExtra)
+
+# Functions used in this Project
+# Function to calculate the Standard Error
+# x: the vector of numerical values
+# returns the standard error of the vector
+standardError <- function( x ) {
+  sd( x )/sqrt( length( x ) )
+}
+
+# function to handle lag
+lagpad <- function(x, k) {
+  if( k > 0 ) {
+    # It should actually be NA in the rep function but for my purposes 0 is acceptable
+    c(rep(0, k), x)[1 : length(x)] 
+  } else {
+    # It should actually be NA in the rep function but for my purposes 0 is acceptable
+    c(x[ (abs(k)+1) : length(x)] , rep(0, abs(k) ) )  
+  }
+}
+
+# Function to calculate Week
+# date - the date for which the Week Number should be calculated
+# returns week Number
+weekNumber <- function( date ) {
+  d1 <- as.Date( paste0( year(date) , "-01-01" ) )
+  as.integer((date-d1)/7)+1
+}
 
 options(scipen=10000)
 
-## Loading the datasets
-train <- read.csv("Data/train.csv")
-stores <- read.csv("Data/stores.csv")
-features <- read.csv("Data/features.csv")
-test <- read.csv("Data/test.csv")
 
-## Fixing the Data
+##################################################################
+# Fixing the Data
+##################################################################
+
+
+################################################################
+# Train Dataset ###############################################
+##############################################################
+train <- read.csv("Data/train.csv")
 train$Date <- as.Date(train$Date)
-features$Date <- as.Date(features$Date)
-test$Date <- as.Date( test$Date)
+train$Store <- as.factor(train$Store)
+train$Dept <- as.factor(train$Dept)
+
+summary(train)
+
+train0 <- subset( train, train$Weekly_Sales <= 0 )
+paste0( round( nrow(train0)/nrow( train )*100 , 1) , "%" )
+abs( min( train0$Weekly_Sales ) )
+## remove train0
+rm( train0 )
+
+## Create subset of train data set
+train <- subset( train , train$Weekly_Sales > 0 )
+## Make Log Transformation for Weekly_Sales
+train$Log_Weekly_Sales <- log(train$Weekly_Sales)
+summary( train[,c(4,6)] )
+
+## plotting the log( Weekly_Sales ) histogram
+ggplot( train, aes( x = Log_Weekly_Sales ) ) +
+  geom_histogram(binwidth=.2 ) + 
+  ## Vertical line indicating the mean value
+  geom_vline( aes( xintercept = mean( Log_Weekly_Sales ) ), color="red" ) +
+  scale_y_continuous( "Frequency of Occurance" ) +
+  scale_x_continuous( "Weekly Sales" )
+
+
+
+## Calculating Detailed Summary Statistics for Weekly_Sales
+Weekly_Sales <- c( 
+  mean( train$Weekly_Sales ) ,
+  standardError(  train$Weekly_Sales ) ,
+  median( train$Weekly_Sales) ,
+  sd( train$Weekly_Sales ) ,
+  var( train$Weekly_Sales ) , 
+  kurtosis( train$Weekly_Sales ) ,
+  skewness( train$Weekly_Sales ) ,
+  range( train$Weekly_Sales )[2]-range( train$Weekly_Sales )[1] ,
+  min( train$Weekly_Sales ) ,
+  max( train$Weekly_Sales ) ,
+  sum( train$Weekly_Sales ),
+  length( train$Weekly_Sales ) 
+)
+
+## Calculating Detailed Summary Statistics for Weekly_Sales
+Log_Weekly_Sales <- c( 
+  mean( train$Log_Weekly_Sales , na.rm = T ) ,
+  standardError(  train$Log_Weekly_Sales ) ,
+  median( train$Log_Weekly_Sales) ,
+  sd( train$Log_Weekly_Sales ) ,
+  var( train$Log_Weekly_Sales ) , 
+  kurtosis( train$Log_Weekly_Sales ) ,
+  skewness( train$Log_Weekly_Sales ) ,
+  range( train$Log_Weekly_Sales )[2]-range( train$Log_Weekly_Sales )[1] ,
+  min( train$Log_Weekly_Sales ) ,
+  max( train$Log_Weekly_Sales ) ,
+  sum( train$Log_Weekly_Sales ),
+  length( train$Log_Weekly_Sales ) 
+)
+
+Description <- c(
+  "Mean",
+  "Standard Error" ,
+  "Median" , 
+  "Standard Deviation" ,
+  "Variance" , 
+  "Kurtosis" ,
+  "Skewness" ,
+  "Range" ,
+  "Min" ,
+  "Max" ,
+  "Sum" ,
+  "Count" 
+)
+
+Detailed_Summary_Statistics_on_Weekly_Sales <- 
+  data.frame( 
+    Description=Description , 
+    Weekly_Sales = Weekly_Sales ,
+    Log_Weekly_Sales = Log_Weekly_Sales
+  )
+## printing out the detailed summary statistics 
+print( Detailed_Summary_Statistics_on_Weekly_Sales , row.names = F )
+
+rm( 
+  Description, 
+  Log_Weekly_Sales , 
+  Weekly_Sales , 
+  Detailed_Summary_Statistics_on_Weekly_Sales
+)
+
+
+
+############# Stores Dataset
+stores <- read.csv("Data/stores.csv")
+
+# Changing Store from int to Factor
+stores$Store <- as.factor( stores$Store)
+
+## plotting the Size histogram
+ggplot( stores , aes( x = Size ) ) +
+  geom_histogram(binwidth=2000 ) + 
+  ## Vertical line indicating the mean value
+  geom_vline( aes( xintercept = mean( Size ) ), color="red" ) +
+  scale_y_continuous( "Frequency of Occurance" ) +
+  scale_x_continuous( "Store Size" )
+
+## box plot to show the summary statistics of the Type of Stores and their sizes
+ggplot(data=stores, 
+       aes(x=Type, y=Size, fill=Type) ) + 
+  geom_boxplot(outlier.shape = 15, outlier.size = 4) +
+  ## to show how the individual store sizes are distributed
+  geom_jitter() +
+  scale_y_continuous( name="Store Size" ) + 
+  scale_fill_brewer( name = "Store Type" , palette = "Dark2")
+
+# Standard Deviation of each type of Store
+StoreTypeSD <- tapply( stores$Size , stores$Type , sd )
+# Median of each Type of Store
+StoreTypeMedian <- tapply( stores$Size , stores$Type , median )
+# Mean of each type of Store
+StoreTypeMean <- tapply( stores$Size , stores$Type , mean )
+# Min Size of each type of Store
+StoreTypeMin <- tapply( stores$Size , stores$Type , min )
+# Max Size of each type of Store
+StoreTypeMax <- tapply( stores$Size , stores$Type , max )
+# Making Dataframe
+StoreTypeSummaryStatistics <- data.frame(
+  StoreTypeSD , StoreTypeMedian , StoreTypeMean , StoreTypeMin , StoreTypeMax
+)
+# Calculating the range
+StoreTypeSummaryStatistics$Range <- StoreTypeMax-StoreTypeMin
+# Printing the Summary Statistic of the Type of Stores
+StoreTypeSummaryStatistics
+# Removing the elements from memory
+rm( StoreTypeSD , StoreTypeMedian , StoreTypeMean , 
+    StoreTypeMin , StoreTypeMax, StoreTypeSummaryStatistics )
+
 
 
 ############################################
 ## Analyzing features
 ############################################
+features <- read.csv("Data/features.csv")
+
+# Changing Store from int to Factor
+features$Store <- as.factor( features$Store)
+features$Date <- as.Date(features$Date)
+test$Date <- as.Date( test$Date)
 summary( features )
 
 
@@ -45,117 +216,168 @@ meanCPIAcrossStores <- tapply( features$CPI , features$Date , FUN = mean )
 meanCPIAcrossStoresDF <- data.frame( meanCPIAcrossStores )
 meanCPIAcrossStoresDF$Date <- as.Date( rownames( meanCPIAcrossStoresDF ) )
 
-## heatmap to undersatnd where CPI is missing
+# heatmap to undersatnd where CPI is missing
 missingCPIHeatMap <- ggplot( features , aes(x = Date, y = Store)) + 
   geom_tile(aes(fill = CPI)) +
   scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
-  scale_y_continuous(name="Store" ) +
-  theme( legend.position = "bottom" )
-## trend of Average CPI Across All Stores
+  scale_y_discrete(name="Store" ) +
+  theme( legend.position = "none" , axis.text.y= element_blank() )
+# trend of Average CPI Across All Stores
 avgCPiIndexTrend <- ggplot( meanCPIAcrossStoresDF , aes(x = Date, y = meanCPIAcrossStores ) ) + 
   geom_line() +
   scale_y_continuous(name="MEAN CPI Across All Stores" ) +
   stat_smooth( method = "lm" )
 grid.arrange(missingCPIHeatMap , avgCPiIndexTrend , ncol = 1 )
 
+# creating a subset of features dataset without NA Values
+features1 <- subset( features , is.na( features$CPI ) == FALSE )
+# creating a subset of features dataset without NA Values
+features2 <- subset( features , is.na( features$CPI ) == TRUE )
+
+# Creating Linear regression model to predict CPI
+cpiPredictor <- lm( 
+  formula = 
+    CPI ~ 
+    Date + 
+    Store + 
+    IsHoliday , 
+  data = features1 )
+
+summary(cpiPredictor)$r.squared
+
+# Predicting values for CPI to substitute the missing values
+features2$CPI <- predict( cpiPredictor,  newdata = features2 )
+## combining the 2 datasets
+features1 <- rbind( features1 , features2)
 
 
-## CPI MEAN, MAX MIN & Range tabulated into a Data Frame
-CPI_Mean <- tapply( features$CPI , features$Store , FUN = mean , na.rm= T )
-CPI_Max <- tapply( features$CPI , features$Store , FUN = max , na.rm= T )
-CPI_Min <- tapply( features$CPI , features$Store , FUN = min , na.rm= T )
-CPI_DF <- data.frame( CPI_Mean , CPI_Max , CPI_Min )
-CPI_DF$Range <- CPI_DF$CPI_Max - CPI_DF$CPI_Min 
-## Checking if there is a difference between Max and Min
-## - if no change then no rows
-CPI_DF[ CPI_DF$Range != 0 ,]
 
+meanCPIAcrossStores <- tapply( features1$CPI , features1$Date , FUN = mean )
+meanCPIAcrossStoresDF <- data.frame( meanCPIAcrossStores )
+meanCPIAcrossStoresDF$Date <- as.Date( rownames( meanCPIAcrossStoresDF ) )
 
-## Removing CPI Columns not needed anymore
-CPI_DF$CPI_Min = CPI_DF$CPI_Max = CPI_DF$Range = NULL
-## Creating Store Column with the RowNAME
-CPI_DF$Store <- as.integer( rownames( CPI_DF ) )
-## Imputing CPI
-## merging the dataframes by Store
-features1 <- merge( features , CPI_DF , by="Store" )
-## removing old CPI Column
-features1$CPI = NULL
-## Renaming CPI_Mean to CPI
-colnames( features1 )[12] <- "CPI"
-
-## checking if the imputation was done correctly
-ggplot( features1 , aes(x = Date, y = Store)) + 
+# heatmap to check if CPI is correctly imputed
+newCPIHeatMap <- ggplot( features1 , aes(x = Date, y = Store)) + 
   geom_tile(aes(fill = CPI)) +
   scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
-  scale_y_continuous(name="Store")
+  scale_y_discrete(name="Store" ) +
+  theme( legend.position = "none" , axis.text.y= element_blank() )
+# trend of Average CPI Across All Stores
+avgCPiIndexTrend <- ggplot( meanCPIAcrossStoresDF , aes(x = Date, y = meanCPIAcrossStores ) ) + 
+  geom_line() +
+  scale_y_continuous(name="MEAN CPI Across All Stores" ) +
+  stat_smooth( method = "lm" )
+grid.arrange(missingCPIHeatMap , avgCPiIndexTrend , ncol = 1 )
 
-## overwriting old features with features1 (with no missing values for CPI)
+# replacing the new data into the variable
 features <- features1
-## removing unneccesary data elements
-rm( CPI_DF , CPI_Max , CPI_Mean , CPI_Min , features1 )
 
 
-ggplot( features , aes(x = Date, y = Store)) + 
-  geom_tile(aes(fill = )) +
-  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
-  scale_y_continuous(name="Store")
+# removing variables not needed anymore
+rm( missingCPIHeatMap , avgCPiIndexTrend , meanCPIAcrossStores , 
+    meanCPIAcrossStoresDF , cpiPredictor , features1 , features2 , 
+    newCPIHeatMap )
+
+
 
 
 
 ############# FEATURES : Unemployment
-## heatmap to undersatnd where Unemployment is missing
+
+# mean unemployment across stores
+meanUnemploymentAcrossStores <- 
+  tapply( features$Unemployment , features$Date , FUN = mean )
+# Converting it into Data Frame
+meanUnemploymentAcrossStoresDF <- 
+  data.frame( meanUnemploymentAcrossStores )
+# Adding the date to the data frame to see the trend
+meanUnemploymentAcrossStoresDF$Date <- 
+  as.Date( rownames( meanUnemploymentAcrossStoresDF ) )
+
+# heatmap to undersatnd where Unemployment is missing
 oldUnemploymentData <- ggplot( features , aes(x = Date, y = Store)) + 
   geom_tile(aes(fill = Unemployment)) +
+  scale_fill_gradient(
+    low="yellow", high="red" , labels = comma , name="Unemployment") +
+  scale_y_discrete(name="Store") +
+  theme( legend.position = "none" , axis.text.y= element_blank() )
+
+# trend of Average Unemployment Across All Stores
+avgUnemploymentIndexTrend <- 
+  ggplot( meanUnemploymentAcrossStoresDF , 
+          aes(x = Date, y = meanUnemploymentAcrossStores ) ) + 
+  geom_line() +
+  scale_y_continuous(name="mean(Unemployment)" ) +
+  stat_smooth( method = "lm" )
+# putting the graphs to a grid
+grid.arrange( oldUnemploymentData , avgUnemploymentIndexTrend , ncol = 1 )
+
+
+
+# creating a subset of features dataset without NA Values
+features1 <- subset( features , is.na( features$Unemployment ) == FALSE )
+# creating a subset of features dataset with NA Values
+features2 <- subset( features , is.na( features$Unemployment ) == TRUE )
+
+
+# Creating Linear regression model to predict unemployment
+unemploymentPredictor <- lm( 
+  formula = 
+    Unemployment ~ 
+    Date + 
+    Store + 
+    IsHoliday +
+    month( Date ) + 
+    year( Date ) +
+    weekNumber( Date ) +
+    CPI , 
+  data = features1 )
+
+summary(unemploymentPredictor)$r.squared
+
+# Predicting values for CPI to substitute the missing values
+features2$Unemployment <- predict( unemploymentPredictor,  newdata = features2 )
+## combining the 2 datasets
+features1 <- rbind( features1 , features2)
+
+
+# mean unemployment across stores
+meanUnemploymentAcrossStores <- 
+  tapply( features1$Unemployment , features$Date , FUN = mean )
+# Converting it into Data Frame
+meanUnemploymentAcrossStoresDF <- 
+  data.frame( meanUnemploymentAcrossStores )
+# Adding the date to the data frame to see the trend
+meanUnemploymentAcrossStoresDF$Date <- 
+  as.Date( rownames( meanUnemploymentAcrossStoresDF ) )
+
+# heatmap to check if CPI is correctly imputed
+newUnemploymentHeatMap <- ggplot( features1 , aes(x = Date, y = Store)) + 
+  geom_tile( aes( fill = Unemployment ) ) +
   scale_fill_gradient(low="yellow", high="red" , labels = comma , name="Unemployment") +
-  scale_y_continuous(name="Store")
+  scale_y_discrete(name="Store" ) +
+  theme( legend.position = "none" , axis.text.y= element_blank() )
+# trend of Average CPI Across All Stores
+newAvgUnemploymentIndexTrend <- 
+  ggplot( meanUnemploymentAcrossStoresDF , aes(x = Date, y = meanUnemploymentAcrossStores ) ) + 
+  geom_line() +
+  scale_y_continuous(name="mean(Unemployment)" ) +
+  stat_smooth( method = "lm" )
+grid.arrange( oldUnemploymentData , avgUnemploymentIndexTrend , newUnemploymentHeatMap , newAvgUnemploymentIndexTrend , ncol = 2 , nrow = 2 )
 
-## Unemployment MEAN, MAX MIN & Range tabulated into a Data Frame
-Unemployment_Mean <- 
-  tapply( features$Unemployment , features$Store , FUN = mean , na.rm = T )
-Unemployment_Max <- 
-  tapply( features$Unemployment , features$Store , FUN = max , na.rm = T )
-Unemployment_Min <- 
-  tapply( features$Unemployment , features$Store , FUN = min , na.rm = T )
-Unemployment_DF <- 
-  data.frame( Unemployment_Mean , Unemployment_Max , Unemployment_Min )
-Unemployment_DF$Range <- Unemployment_DF$Unemployment_Max - Unemployment_DF$Unemployment_Min 
-## Checking if there is a difference between Max and Min
-## - if no change then no rows
-Unemployment_DF[ Unemployment_DF$Range > 0 ,]
-
-
-## Removing CPI Columns not needed anymore
-CPI_DF$CPI_Min = CPI_DF$CPI_Max = CPI_DF$Range = NULL
-## Creating Store Column with the RowNAME
-CPI_DF$Store <- as.integer( rownames( CPI_DF ) )
-## Imputing CPI
-## merging the dataframes by Store
-features1 <- merge( features , CPI_DF , by="Store" )
-## removing old CPI Column
-features1$CPI = NULL
-## Renaming CPI_Mean to CPI
-colnames( features1 )[12] <- "CPI"
-
-## checking if the imputation was done correctly
-ggplot( features1 , aes(x = Date, y = Store)) + 
-  geom_tile(aes(fill = CPI)) +
-  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
-  scale_y_continuous(name="Store")
-
-## overwriting old features with features1 (with no missing values for CPI)
+# replacing the new data into the variable
 features <- features1
-## removing unneccesary data elements
-rm( CPI_DF , CPI_Max , CPI_Mean , CPI_Min , features1 )
 
-
-ggplot( features , aes(x = Date, y = Store)) + 
-  geom_tile(aes(fill = )) +
-  scale_fill_gradient(low="yellow", high="red" , labels = comma , name="CPI") +
-  scale_y_continuous(name="Store")
+# removing variables not needed anymore
+rm( oldUnemploymentData , avgUnemploymentIndexTrend , 
+    meanUnemploymentAcrossStores ,  meanUnemploymentAcrossStoresDF , 
+    unemploymentPredictor , features1 , features2 , newUnemploymentHeatMap, 
+    newAvgUnemploymentIndexTrend )
 
 
 
 
+test <- read.csv("Data/test.csv")
 
 
 
@@ -178,9 +400,7 @@ testStoresFeaturesMerge$IsHoliday.y <- NULL
 
 
 ## removing intermediate datasets
-rm(trainStoresMerge )
-rm( testStoresMerge )
-
+rm(trainStoresMerge ,   testStoresMerge )
 
 # unique store department sales
 #-----------------------------------------------------------------------------
@@ -263,18 +483,6 @@ rm(StoreTotalSales , tabledTypeWiseSummaryStatistics )
 
 ## Total Sales Per Week - Time Series
 ## ----------------------------------------------------------
-
-# function to handle lag
-lagpad <- function(x, k) {
-  if( k > 0 ) {
-    # It should actually be NA in the rep function but for my purposes 0 is acceptable
-    c(rep(0, k), x)[1 : length(x)] 
-  } else {
-    # It should actually be NA in the rep function but for my purposes 0 is acceptable
-    c(x[ (abs(k)+1) : length(x)] , rep(0, abs(k) ) )  
-  }
-}
-
 
 ## Running tapply with sum to find the total sales per week
 totalSalesPerWeek <- tapply( trainStoresFeaturesMerge$Weekly_Sales , trainStoresFeaturesMerge$Date , FUN = sum )
@@ -477,7 +685,7 @@ holidayDateTableDataFrame$Week2AfterHoliday = NULL
 holidayDateTableDataFrame$IsHoliday = NULL
 holidayDateTableDataFrame$IsHolidayDefined = NULL
 
-rm( totalSalesPerWeekDataFrame , totalSalesPerWeekDataFrameDuringHolidays , trainStoresMerge )
+rm( totalSalesPerWeekDataFrame , totalSalesPerWeekDataFrameDuringHolidays  )
 
 
 #################################################################
@@ -495,19 +703,8 @@ ggplot( train, aes( x = Weekly_Sales ) ) +
   scale_y_continuous( "Frequency of Occurance" ) +
   scale_x_continuous( "Weekly Sales" )
 
-train0 <- subset( train, train$Weekly_Sales <= 0 )
 
 
-paste0( round( nrow(train0)/nrow( train )*100 , 1) , "%" )
-
-abs( min( train0$Weekly_Sales ) )
-
-## Create subset of train data set
-train <- subset( train , train$Weekly_Sales > 0 )
-## Make Log Transformation for Weekly_Sales
-train$Log_Weekly_Sales <- log(train$Weekly_Sales)
-## remove train0
-rm( train0 )
 
 
 ## Merging the datasets
@@ -524,138 +721,16 @@ testStoresFeaturesMerge$IsHoliday.y <- NULL
 
 
 
-summary(train$Weekly_Sales)
-summary( train$Log_Weekly_Sales )
-
-
-## plotting the log( Weekly_Sales ) histogram
-ggplot( train, aes( x = Log_Weekly_Sales ) ) +
-  geom_histogram(binwidth=.2 ) + 
-  ## Vertical line indicating the mean value
-  geom_vline( aes( xintercept = mean( Log_Weekly_Sales ) ), color="red" ) +
-  scale_y_continuous( "Frequency of Occurance" ) +
-  scale_x_continuous( "Weekly Sales" )
 
 
 
 
 
 
-## Function to calculate the Standard Error
-## x: the vector of numerical values
-## returns the standard error of the vector
-standardError <- function( x ) {
-  sd( x )/sqrt( length( x ) )
-}
-
-
-## Calculating Detailed Summary Statistics for Weekly_Sales
-Weekly_Sales <- c( 
-  mean( train$Weekly_Sales ) ,
-  standardError(  train$Weekly_Sales ) ,
-  median( train$Weekly_Sales) ,
-  sd( train$Weekly_Sales ) ,
-  var( train$Weekly_Sales ) , 
-  kurtosis( train$Weekly_Sales ) ,
-  skewness( train$Weekly_Sales ) ,
-  range( train$Weekly_Sales )[2]-range( train$Weekly_Sales )[1] ,
-  min( train$Weekly_Sales ) ,
-  max( train$Weekly_Sales ) ,
-  sum( train$Weekly_Sales ),
-  length( train$Weekly_Sales ) 
-)
-
-## Calculating Detailed Summary Statistics for Weekly_Sales
-Log_Weekly_Sales <- c( 
-  mean( train$Log_Weekly_Sales , na.rm = T ) ,
-  standardError(  train$Log_Weekly_Sales ) ,
-  median( train$Log_Weekly_Sales) ,
-  sd( train$Log_Weekly_Sales ) ,
-  var( train$Log_Weekly_Sales ) , 
-  kurtosis( train$Log_Weekly_Sales ) ,
-  skewness( train$Log_Weekly_Sales ) ,
-  range( train$Log_Weekly_Sales )[2]-range( train$Log_Weekly_Sales )[1] ,
-  min( train$Log_Weekly_Sales ) ,
-  max( train$Log_Weekly_Sales ) ,
-  sum( train$Log_Weekly_Sales ),
-  length( train$Log_Weekly_Sales ) 
-)
-
-Description <- c(
-  "Mean",
-  "Standard Error" ,
-  "Median" , 
-  "Standard Deviation" ,
-  "Variance" , 
-  "Kurtosis" ,
-  "Skewness" ,
-  "Range" ,
-  "Min" ,
-  "Max" ,
-  "Sum" ,
-  "Count" 
-)
-
-Weekly_Sales
-Description
-
-Detailed_Summary_Statistics_on_Weekly_Sales <- 
-  data.frame( 
-    Description=Description , 
-    Weekly_Sales = Weekly_Sales ,
-    Log_Weekly_Sales = Log_Weekly_Sales
-    )
-## printing out the detailed summary statistics 
-print( Detailed_Summary_Statistics_on_Weekly_Sales , row.names = F )
-
-rm( 
-  Description, 
-  Log_Weekly_Sales , 
-  Weekly_Sales , 
-  Detailed_Summary_Statistics_on_Weekly_Sales
-  )
-
-
-############# Stores Dataset
-summary(stores$Size)
-
-## plotting the Size histogram
-ggplot( stores , aes( x = Size ) ) +
-  geom_histogram(binwidth=2000 ) + 
-  ## Vertical line indicating the mean value
-  geom_vline( aes( xintercept = mean( Size ) ), color="red" ) +
-  scale_y_continuous( "Frequency of Occurance" ) +
-  scale_x_continuous( "Store Size" )
-
-
-## box plot to show the summary statistics of the Type of Stores and their sizes
-ggplot(data=stores, 
-       aes(x=Type, y=Size, fill=Type) ) + 
-  geom_boxplot(outlier.shape = 15, outlier.size = 4) +
-  ## to show how the individual store sizes are distributed
-  geom_jitter() +
-  scale_y_continuous( name="Store Size" ) + 
-  scale_fill_brewer( name = "Store Type" , palette = "Dark2")
-
-## Standard Deviation of each type of Store
-tapply( stores$Size , stores$Type , sd )
-## Median of each Type of Store
-tapply( stores$Size , stores$Type , median )
-## Mean of each type of Store
-tapply( stores$Size , stores$Type , mean )
 
 
 
 
-
-
-## Function to calculate Week
-## date - the date for which the Week Number should be calculated
-## returns week Number
-weekNumber <- function( date ) {
-  d1 <- as.Date( paste0( year(date) , "-01-01" ) )
-  as.integer((date-d1)/7)+1
-}
 
 ## Adding the Week Number to the holidayDateTableDataFrame
 holidayDateTableDataFrame$WeekNumber <- weekNumber( holidayDateTableDataFrame$Date )
